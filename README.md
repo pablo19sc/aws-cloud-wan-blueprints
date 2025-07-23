@@ -35,9 +35,10 @@ These blueprints have been designed to be consumed in the following manners:
 
 ## Patterns
 
-1. Simple architectures (TBD)
-2. [Traffic inspection architectures](./patterns/2-traffic_inspection/)
-3. Hybrid architectures (TBD)
+1. [Simple architectures](./patterns/1-simple_architecture/)
+2. Multi-AWS Account (TBD)
+3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
+4. Hybrid architectures (TBD)
 
 ## AWS Cloud WAN components and features
 
