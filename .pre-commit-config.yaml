@@ -1,0 +1,42 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.83.5
+    hooks:
+      - id: terraform_fmt
+        args:
+          - --args=-recursive
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=.config/.terraform-docs.yaml
+          - --hook-config=--recursive
+          - --hook-config=--recursive-path=patterns
+      - id: terraform_validate
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+      - id: terraform_tflint
+        args:
+          - --args=--recursive
+
+  - repo: https://github.com/aws-cloudformation/cfn-lint
+    rev: v0.83.5
+    hooks:
+      - id: cfn-lint
+        files: \.(yaml|yml|json)$
+        exclude: ^\.config/.*$
+
+  - repo: https://github.com/stelligent/cfn_nag
+    rev: v0.8.10
+    hooks:
+      - id: cfn_nag
+        files: \.(yaml|yml|json)$
+        exclude: ^\.config/.*$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files

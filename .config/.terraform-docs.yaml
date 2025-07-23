@@ -1,0 +1,27 @@
+formatter: markdown
+header-from: .header.md
+
+recursive:
+  enabled: true
+  path: patterns
+  include-main: true
+  pattern: "**/**/terraform"
+
+settings:
+  anchor: true
+  color: true
+  default: true
+  escape: true
+  html: true
+  indent: 2
+  required: true
+  sensitive: true
+  type: true
+
+sort:
+  enabled: true
+  by: required
+
+output:
+  file: "README.md"
+  mode: replace
