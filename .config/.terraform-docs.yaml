@@ -1,12 +1,6 @@
 formatter: markdown
 header-from: .header.md
 
-recursive:
-  enabled: true
-  path: patterns
-  include-main: true
-  pattern: "**/**/terraform"
-
 settings:
   anchor: true
   color: true
