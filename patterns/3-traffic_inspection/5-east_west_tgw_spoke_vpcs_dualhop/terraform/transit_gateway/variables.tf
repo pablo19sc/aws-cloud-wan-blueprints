@@ -27,4 +27,3 @@ variable "core_network_id" {
   type        = string
   description = "Core Network ID."
 }
-

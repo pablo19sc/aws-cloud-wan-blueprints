@@ -6,19 +6,19 @@ Resources:
     Type: AWS::NetworkManager::GlobalNetwork
     Properties:
       Description: Global Network - Centralized Outbound
-      Tags: 
+      Tags:
         - Key: Name
           Value: global-network-centralized-outbound
-  
+
   CoreNetwork:
     Type: AWS::NetworkManager::CoreNetwork
     Properties:
       Description: Core Network - Centralized Outbound
       GlobalNetworkId: !Ref GlobalNetwork
-      Tags: 
+      Tags:
         - Key: Name
           Value: core-network-centralized-outbound
-      PolicyDocument: 
+      PolicyDocument:
         version: "2021.12"
         core-network-configuration:
           vpn-ecmp-support: false

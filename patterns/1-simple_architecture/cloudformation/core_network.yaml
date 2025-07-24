@@ -6,19 +6,19 @@ Resources:
     Type: AWS::NetworkManager::GlobalNetwork
     Properties:
       Description: Global Network - Simple Architecture
-      Tags: 
+      Tags:
         - Key: Name
           Value: global-network-simple-architecture
-  
+
   CoreNetwork:
     Type: AWS::NetworkManager::CoreNetwork
     Properties:
       Description: Core Network - Simple Architecture
       GlobalNetworkId: !Ref GlobalNetwork
-      Tags: 
+      Tags:
         - Key: Name
           Value: core-network-simple-architecture
-      PolicyDocument: 
+      PolicyDocument:
         version: "2021.12"
         core-network-configuration:
           vpn-ecmp-support: false

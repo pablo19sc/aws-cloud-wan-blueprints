@@ -13,7 +13,7 @@ Parameters:
 
 Mappings:
   ProdVpcCIDR:
-    us-east-1: 
+    us-east-1:
       CIDR: 10.10.0.0/24
       EndpointSubneta: 10.10.0.0/28
       EndpointSubnetb: 10.10.0.16/28
@@ -21,7 +21,7 @@ Mappings:
       PrivateSubnetb: 10.10.0.48/28
       CWANSubneta: 10.10.0.64/28
       CWANSubnetb: 10.10.0.80/28
-    eu-west-1: 
+    eu-west-1:
       CIDR: 10.0.0.0/24
       EndpointSubneta: 10.0.0.0/28
       EndpointSubnetb: 10.0.0.16/28
@@ -29,7 +29,7 @@ Mappings:
       PrivateSubnetb: 10.0.0.48/28
       CWANSubneta: 10.0.0.64/28
       CWANSubnetb: 10.0.0.80/28
-    ap-southeast-2: 
+    ap-southeast-2:
       CIDR: 10.20.0.0/24
       EndpointSubneta: 10.20.0.0/28
       EndpointSubnetb: 10.20.0.16/28
@@ -38,7 +38,7 @@ Mappings:
       CWANSubneta: 10.20.0.64/28
       CWANSubnetb: 10.20.0.80/28
   DevVpcCIDR:
-    us-east-1: 
+    us-east-1:
       CIDR: 10.10.1.0/24
       EndpointSubneta: 10.10.1.0/28
       EndpointSubnetb: 10.10.1.16/28
@@ -46,7 +46,7 @@ Mappings:
       PrivateSubnetb: 10.10.1.48/28
       CWANSubneta: 10.10.1.64/28
       CWANSubnetb: 10.10.1.80/28
-    eu-west-1: 
+    eu-west-1:
       CIDR: 10.0.1.0/24
       EndpointSubneta: 10.0.1.0/28
       EndpointSubnetb: 10.0.1.16/28
@@ -54,7 +54,7 @@ Mappings:
       PrivateSubnetb: 10.0.1.48/28
       CWANSubneta: 10.0.1.64/28
       CWANSubnetb: 10.0.1.80/28
-    ap-southeast-2: 
+    ap-southeast-2:
       CIDR: 10.20.1.0/24
       EndpointSubneta: 10.20.1.0/28
       EndpointSubnetb: 10.20.1.16/28
@@ -63,7 +63,7 @@ Mappings:
       CWANSubneta: 10.20.1.64/28
       CWANSubnetb: 10.20.1.80/28
   InspectionVpcCIDR:
-    us-east-1: 
+    us-east-1:
       CIDR: 10.100.0.0/16
       EndpointSubneta: 10.100.0.0/28
       EndpointSubnetb: 10.100.0.16/28
@@ -71,7 +71,7 @@ Mappings:
       CWANSubnetb: 10.100.0.48/28
       PublicSubneta: 10.100.0.64/28
       PublicSubnetb: 10.100.0.80/28
-    eu-west-1: 
+    eu-west-1:
       CIDR: 10.100.0.0/16
       EndpointSubneta: 10.100.0.0/28
       EndpointSubnetb: 10.100.0.16/28
@@ -79,7 +79,7 @@ Mappings:
       CWANSubnetb: 10.100.0.48/28
       PublicSubneta: 10.100.0.64/28
       PublicSubnetb: 10.100.0.80/28
-    ap-southeast-2: 
+    ap-southeast-2:
       CIDR: 10.100.0.0/16
       EndpointSubneta: 10.100.0.0/28
       EndpointSubnetb: 10.100.0.16/28
@@ -92,9 +92,9 @@ Resources:
   # ---------- PRODUCTION VPC ----------
   ProductionVPC:
     Type: AWS::EC2::VPC
-    Properties: 
+    Properties:
       CidrBlock: !FindInMap [ProdVpcCIDR, !Ref 'AWS::Region', CIDR]
-      Tags: 
+      Tags:
         - Key: Name
           Value: !Join
             - '-'
@@ -129,7 +129,7 @@ Resources:
             Type: AWS::EC2::RouteTable
             Properties:
               VpcId: !Ref ProductionVPC
-              Tags: 
+              Tags:
                 - Key: Name
                   Value: !Join
                     - '-'
@@ -138,7 +138,7 @@ Resources:
           # Route Table associations
           'Production${SubnetType}RouteTableAssociation${AvailabilityZone}':
             Type: AWS::EC2::SubnetRouteTableAssociation
-            Properties: 
+            Properties:
               RouteTableId: !Ref
                 'Fn::Sub': 'Production${SubnetType}RouteTable${AvailabilityZone}'
               SubnetId: !Ref
@@ -158,7 +158,7 @@ Resources:
             'Fn::Sub': 'ProductionPrivateRouteTable${AvailabilityZone}'
           DestinationCidrBlock: '0.0.0.0/0'
           CoreNetworkArn: !Ref CoreNetworkArn
-  
+
   # AWS Cloud WAN attachment
   ProdCWANAttachment:
     Type: AWS::NetworkManager::VpcAttachment
@@ -208,7 +208,7 @@ Resources:
     Properties:
       GroupDescription: Production VPC - Instance Security Group
       VpcId: !Ref ProductionVPC
-  
+
   VPCProdInstanceSecurityGroupIngressICMP:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -218,7 +218,7 @@ Resources:
       FromPort: -1
       ToPort: -1
       CidrIp: 10.0.0.0/8
-  
+
   VPCProdInstanceSecurityGroupIngressEIC:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -228,7 +228,7 @@ Resources:
       FromPort: 22
       ToPort: 22
       SourceSecurityGroupId: !Ref VPCProdEndpointSecurityGroup
-  
+
   VPCProdInstanceSecurityGroupEgress:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -242,7 +242,7 @@ Resources:
     Properties:
       GroupDescription: Production VPC - Endpoints Security Group
       VpcId: !Ref ProductionVPC
-  
+
   VPCProdEndpointSecurityGroupEgressEIC:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -252,7 +252,7 @@ Resources:
       FromPort: 22
       ToPort: 22
       DestinationSecurityGroupId: !Ref VPCProdInstanceSecurityGroup
-  
+
   # # For::Each iteration: per AZ (2 AZs)
   # # EC2 Instances
   'Fn::ForEach::ProductionInstances':
@@ -264,7 +264,7 @@ Resources:
           InstanceType: t3.micro
           SecurityGroupIds:
             - !Ref VPCProdInstanceSecurityGroup
-          SubnetId: !Ref 
+          SubnetId: !Ref
             'Fn::Sub': 'ProductionPrivateSubnet${AvailabilityZone}'
           ImageId: !Ref LatestAmiId
           Tags:
@@ -273,16 +273,16 @@ Resources:
                 - '-'
                 - - !Sub prod-instance-${AvailabilityZone}
                   - !Ref AWS::StackName
-  
+
   # EC2 Instance Connect Endpoint
   ProdEICEndpoint:
     Type: AWS::EC2::InstanceConnectEndpoint
     Properties:
       PreserveClientIp: false
-      SecurityGroupIds: 
+      SecurityGroupIds:
         - !Ref VPCProdEndpointSecurityGroup
       SubnetId: !Ref ProductionEndpointSubneta
-      Tags: 
+      Tags:
         - Key: Name
           Value : !Join
             - '-'
@@ -292,9 +292,9 @@ Resources:
   # ---------- DEVELOPMENT VPC ----------
   DevelopmentVPC:
     Type: AWS::EC2::VPC
-    Properties: 
+    Properties:
       CidrBlock: !FindInMap [DevVpcCIDR, !Ref 'AWS::Region', CIDR]
-      Tags: 
+      Tags:
         - Key: Name
           Value: !Join
             - '-'
@@ -329,7 +329,7 @@ Resources:
             Type: AWS::EC2::RouteTable
             Properties:
               VpcId: !Ref DevelopmentVPC
-              Tags: 
+              Tags:
                 - Key: Name
                   Value: !Join
                     - '-'
@@ -338,12 +338,12 @@ Resources:
           # Route Table associations
           'Development${SubnetType}RouteTableAssociation${AvailabilityZone}':
             Type: AWS::EC2::SubnetRouteTableAssociation
-            Properties: 
+            Properties:
               RouteTableId: !Ref
                 'Fn::Sub': 'Development${SubnetType}RouteTable${AvailabilityZone}'
               SubnetId: !Ref
                 'Fn::Sub': 'Development${SubnetType}Subnet${AvailabilityZone}'
-  
+
   # For::Each iteration: per Availability Zone
   # VPC routes to 0.0.0.0/0 (via CWAN)
   'Fn::ForEach::DevelopmentVPCRoutes':
@@ -358,7 +358,7 @@ Resources:
             'Fn::Sub': 'DevelopmentPrivateRouteTable${AvailabilityZone}'
           DestinationCidrBlock: '0.0.0.0/0'
           CoreNetworkArn: !Ref CoreNetworkArn
-  
+
   # AWS Cloud WAN attachment
   DevCWANAttachment:
     Type: AWS::NetworkManager::VpcAttachment
@@ -408,7 +408,7 @@ Resources:
     Properties:
       GroupDescription: Development VPC - Instance Security Group
       VpcId: !Ref DevelopmentVPC
-  
+
   VPCDevInstanceSecurityGroupIngressICMP:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -418,7 +418,7 @@ Resources:
       FromPort: -1
       ToPort: -1
       CidrIp: 10.0.0.0/8
-  
+
   VPCDevInstanceSecurityGroupIngressEIC:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -428,7 +428,7 @@ Resources:
       FromPort: 22
       ToPort: 22
       SourceSecurityGroupId: !Ref VPCDevEndpointSecurityGroup
-  
+
   VPCDevInstanceSecurityGroupEgress:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -442,7 +442,7 @@ Resources:
     Properties:
       GroupDescription: Development VPC - Endpoints Security Group
       VpcId: !Ref DevelopmentVPC
-  
+
   VPCDevEndpointSecurityGroupEgressEIC:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
@@ -452,7 +452,7 @@ Resources:
       FromPort: 22
       ToPort: 22
       DestinationSecurityGroupId: !Ref VPCDevInstanceSecurityGroup
-  
+
   # # For::Each iteration: per AZ (2 AZs)
   # # EC2 Instances
   'Fn::ForEach::DevelopmentInstances':
@@ -464,7 +464,7 @@ Resources:
           InstanceType: t3.micro
           SecurityGroupIds:
             - !Ref VPCDevInstanceSecurityGroup
-          SubnetId: !Ref 
+          SubnetId: !Ref
             'Fn::Sub': 'DevelopmentPrivateSubnet${AvailabilityZone}'
           ImageId: !Ref LatestAmiId
           Tags:
@@ -473,16 +473,16 @@ Resources:
                 - '-'
                 - - !Sub dev-instance-${AvailabilityZone}
                   - !Ref AWS::StackName
-  
+
   # EC2 Instance Connect Endpoint
   DevEICEndpoint:
     Type: AWS::EC2::InstanceConnectEndpoint
     Properties:
       PreserveClientIp: false
-      SecurityGroupIds: 
+      SecurityGroupIds:
         - !Ref VPCDevEndpointSecurityGroup
       SubnetId: !Ref DevelopmentEndpointSubneta
-      Tags: 
+      Tags:
         - Key: Name
           Value : !Join
             - '-'
@@ -492,9 +492,9 @@ Resources:
   # ---------- INSPECTION VPC ----------
   InspectionVPC:
     Type: AWS::EC2::VPC
-    Properties: 
+    Properties:
       CidrBlock: !FindInMap [InspectionVpcCIDR, !Ref 'AWS::Region', CIDR]
-      Tags: 
+      Tags:
         - Key: Name
           Value: !Join
             - '-'
@@ -529,7 +529,7 @@ Resources:
             Type: AWS::EC2::RouteTable
             Properties:
               VpcId: !Ref InspectionVPC
-              Tags: 
+              Tags:
                 - Key: Name
                   Value: !Join
                     - '-'
@@ -538,12 +538,12 @@ Resources:
           # Route Table associations
           'Inspection${SubnetType}RouteTableAssociation${AvailabilityZone}':
             Type: AWS::EC2::SubnetRouteTableAssociation
-            Properties: 
+            Properties:
               RouteTableId: !Ref
                 'Fn::Sub': 'Inspection${SubnetType}RouteTable${AvailabilityZone}'
               SubnetId: !Ref
                 'Fn::Sub': 'Inspection${SubnetType}Subnet${AvailabilityZone}'
-  
+
   # For::Each iteration: per Availability Zone
   # 0.0.0.0/0 route from Endpoint subnets to CWAN
   'Fn::ForEach::InspectionVPCRoutes':
@@ -601,7 +601,7 @@ Resources:
             - Ref: AWS::AccountId
             - ":vpc/"
             - Ref: InspectionVPC
-  
+
   # Network Firewall resource
   NetworkFirewall:
     Type: AWS::NetworkFirewall::Firewall
@@ -615,7 +615,7 @@ Resources:
       SubnetMappings:
         - SubnetId: !Ref InspectionEndpointSubneta
         - SubnetId: !Ref InspectionEndpointSubnetb
-  
+
   # Firewall Policy
   NetworkFirewallRulesPolicy:
     Type: AWS::NetworkFirewall::FirewallPolicy
@@ -640,7 +640,7 @@ Resources:
         - "-"
         - - "firewall-policy"
           - !Ref AWS::Region
-  
+
   # Stateless Rule Group - Dropping any SSH connection
   NetworkFirewallStatelessDropRemote:
     Type: AWS::NetworkFirewall::RuleGroup
@@ -693,7 +693,7 @@ Resources:
             alert icmp any any -> any any (msg: "Alerting traffic passing through firewall"; sid:1; rev:1;)
             pass icmp any any -> any any (msg: "Allowing ICMP packets"; sid:2; rev:1;)
 
-  # ---------- CUSTOM RESOURCE: VPC routes to Network Firewall (Inspection VPC) ----------  
+  # ---------- CUSTOM RESOURCE: VPC routes to Network Firewall (Inspection VPC) ----------
   # Default routes from CWAN subnets via the Firewall endpoints
   RouteCWANToFirewall1:
     Type: Custom::RouteTableEntry

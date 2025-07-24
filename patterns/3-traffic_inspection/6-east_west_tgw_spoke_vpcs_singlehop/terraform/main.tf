@@ -311,4 +311,3 @@ module "sydney_compute" {
   vpc             = each.value
   vpc_information = var.sydney_spoke_vpcs[each.key]
 }
-

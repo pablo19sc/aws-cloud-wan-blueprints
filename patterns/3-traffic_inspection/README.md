@@ -16,7 +16,7 @@ In all use cases, you will find two routing domains: **production** and **develo
 * Inter-segment traffic will be inspected.
 * VPCs within the **development** segment can talk between each other directly.
 
-This repository does not focus on [AWS Network Firewall](https://aws.amazon.com/network-firewall/)'s policy configuration, therefore the policy rules configured are simple and only used to test connectivity. 
+This repository does not focus on [AWS Network Firewall](https://aws.amazon.com/network-firewall/)'s policy configuration, therefore the policy rules configured are simple and only used to test connectivity.
 
 * For egress traffic, only traffic to *.amazon.com* domains is allowed.
 * For east-west traffic, any ICMP packets are alerted and allowed.
@@ -258,7 +258,7 @@ The Core Network's policy creates the following resources:
 * **Service Insertion rules**: one [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments. The mode used is *dual-hop*, meaning that traffic traversing two AWS Regions is inspected in both of them.
 
 ![East-West](../../images/east_west_dualhop.png)
-  
+
 ```json
 {
     "version": "2021.12",
@@ -351,7 +351,7 @@ The Core Network's policy creates the following resources:
 
 * 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
 * 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: one [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments. 
+* **Service Insertion rules**: one [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
   * The mode used is *single-hop*, meaning that traffic traversing two AWS Regions is inspected in only one of them.
   * In addition, one of the Regions (*eu-west-2* in the example) does not have local Inspection VPC. With *single-hop* mode, the traffic from this Region to other ones is inspected in the Region with a local Inspection VPC. For inspection between segments within the Region, *eu-west-1* is used.
 
@@ -360,7 +360,7 @@ The following matrix is used to determine which Inspection VPC is used for traff
 | *AWS Region*       | us-east-1 | eu-west-1 | eu-west-2      | ap-south-east-2 |
 | --------------     |:---------:| ---------:| --------------:| ---------------:|
 | **us-east-1**      | us-east-1 | us-east-1 | us-east-1      | us-east-1       |
-| **eu-west-1**      | us-east-1 | eu-west-1 | eu-west-1      | eu-west-1       | 
+| **eu-west-1**      | us-east-1 | eu-west-1 | eu-west-1      | eu-west-1       |
 | **eu-west-2**      | us-east-1 | eu-west-1 | eu-west-1      | ap-southeast-2  |
 | **ap-southeast-2** | us-east-1 | eu-west-1 | ap-southeast-2 | ap-southeast-2  |
 
@@ -523,7 +523,7 @@ The following matrix is used to determine which Inspection VPC is used for traff
 
 In this use case, you have two sets of Inspection VPCs: the ones attached to AWS Cloud WAN are used for inter-Region traffic, while the ones attached to AWS Transit Gateway are used for intra-Region traffic.
 
-* If you are using AWS Network Firewall as firewall solution, the use of different Inspection VPCs means duplicating the firewall resources. 
+* If you are using AWS Network Firewall as firewall solution, the use of different Inspection VPCs means duplicating the firewall resources.
   * If you don't want this duplication of resources (extra cost or managament), you can also have only 1 Inspection VPC attached to both Cloud WAN and Transit Gateway. This pattern will require more specific route when configuring the VPC routes pointing back to the network - *local* routes via Transit Gateway, *cross-Region* routes to Cloud WAN.
 * If you are using another firewall solution behind [Gateway Load Balancer](https://aws.amazon.com/elasticloadbalancing/gateway-load-balancer/) (GWLB), you can place GWLB endpoints in several VPCs pointing to the same GWLB. This means that, although you have two different VPCs to simplify the routing, you are not duplicating the number of firewall resources.
 
@@ -539,7 +539,7 @@ The following resources are created:
 * The Cloud WAN policy configures the following:
   * 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that associates each Transit Gateway route table attachment to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*. In the example, the *production* and *prod_routes* TGW route table are associated to the *production* segment, and the *development* route table is associated to the *development* segment.
   * 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-  * **Service Insertion rules**: 
+  * **Service Insertion rules**:
     * Two [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) actions to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
     * With the send-via action, you will see in the TGWs a path to connect VPCs within the same routing domain (*production* via inspection, *development* direct path) and within different routing domains in different Regions (via inspection). However, routes between segments in the same Region (via inspection) won't be propagated. **That's why we need a dedicated Inspection VPC attached to the Transit Gateway to enable intra-Region traffic.**
 
@@ -659,7 +659,7 @@ The following resources are created:
 * The Cloud WAN policy configures the following:
   * 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that associates each Transit Gateway route table attachment to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*. In the example, the *production* and *prod_routes* TGW route table are associated to the *production* segment, and the *development* route table is associated to the *development* segment.
   * 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-  * **Service Insertion rules**: 
+  * **Service Insertion rules**:
     * One [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
     * With only the send-via action, you will see in the TGWs a path to connect VPCs within the same routing domain (*production* via inspection, *development* direct path) and within different routing domains in different Regions (via inspection). However, routes between segments in the same Region (via inspection) won't be propagated.
     * To allow intra-Region communication, two [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) actions are created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.

@@ -7,7 +7,7 @@ repos:
         args:
           - --args=-recursive
       - id: terraform_docs
-        files: \.tf$
+        files: (\.tf|\.header\.md)$
         args:
           - --hook-config=--path-to-file=.config/.terraform-docs.yaml
       - id: terraform_validate

@@ -1,7 +1,7 @@
 <!-- BEGIN_TF_DOCS -->
 # AWS Cloud WAN simple architecture (Terraform)
 
-[IMAGE]
+![Simple Architecture](../../../images/patterns\_simple\_architecture.png)
 
 ## Prerequisites
 - An AWS account with an IAM user with the appropriate permissions.
