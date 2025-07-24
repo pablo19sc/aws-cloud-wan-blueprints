@@ -36,7 +36,7 @@ These blueprints have been designed to be consumed in the following manners:
 ## Patterns
 
 1. [Simple architecture](./patterns/1-simple_architecture/)
-2. Multi-AWS Account (TBD)
+2. [Multi-AWS Account](./patterns/2-multi_account/)
 3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
 4. Hybrid architectures (TBD)
 
