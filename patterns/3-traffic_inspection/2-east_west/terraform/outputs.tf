@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- east_west_dualhop/outputs.tf ---
+# --- patterns/3-traffic_inspection/2-east_west/terraform/cloudwan_policy.tf ---
 
 output "cloud_wan" {
   description = "AWS Cloud WAN resources."
@@ -22,9 +22,9 @@ output "vpcs" {
       spokes     = { for k, v in module.nvirginia_spoke_vpcs : k => v.vpc_attributes.id }
       inspection = module.nvirginia_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
-    sydney = {
-      spokes     = { for k, v in module.sydney_spoke_vpcs : k => v.vpc_attributes.id }
-      inspection = module.sydney_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
+    oregon = {
+      spokes     = { for k, v in module.oregon_spoke_vpcs : k => v.vpc_attributes.id }
+      inspection = module.oregon_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
   }
 }

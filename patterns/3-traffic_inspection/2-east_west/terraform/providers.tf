@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- east_west_dualhop/providers.tf ---
+# --- patterns/3-traffic_inspection/2-east_west/terraform/cloudwan_policy.tf ---
 
 terraform {
   required_version = ">= 1.3.0"
@@ -13,20 +13,20 @@ terraform {
   }
 }
 
-# Provider definition for Ireland Region
+# Provider definitios for Ireland Region
 provider "aws" {
   region = var.aws_regions.ireland
   alias  = "awsireland"
 }
 
-# Provider definition for N. Virginia Region
+# Provider definitios for N. Virginia Region
 provider "aws" {
   region = var.aws_regions.nvirginia
   alias  = "awsnvirginia"
 }
 
-# Provider definition for Sydney Region
+# Provider definitios for Oregon Region
 provider "aws" {
-  region = var.aws_regions.sydney
-  alias  = "awssydney"
+  region = var.aws_regions.oregon
+  alias  = "awsoregon"
 }
