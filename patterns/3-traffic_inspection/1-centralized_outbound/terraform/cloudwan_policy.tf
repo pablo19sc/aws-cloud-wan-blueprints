@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- centralized_outbound/cloudwan_policys.tf ---
+# --- patterns/3-traffic_inspection/1-centralized_outbound/terraform/cloudwan_policy.tf ---
 
 locals {
   segments = {
@@ -56,6 +56,12 @@ data "aws_networkmanager_core_network_policy_document" "policy" {
       segment = segment.key
       via {
         network_function_groups = ["inspectionVpcs"]
+        with_edge_override {
+          edge_sets = [
+            ["us-west-2"]
+          ]
+          use_edge_location = "us-east-1"
+        }
       }
     }
   }

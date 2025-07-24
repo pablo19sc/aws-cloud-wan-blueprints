@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- centralized_outbound/outputs.tf ---
+# --- patterns/3-traffic_inspection/1-centralized_outbound/terraform/outputs.tf ---
 
 output "cloud_wan" {
   description = "AWS Cloud WAN resources."
@@ -15,16 +15,13 @@ output "vpcs" {
   description = "VPCs created."
   value = {
     ireland = {
-      spokes     = { for k, v in module.ireland_spoke_vpcs : k => v.vpc_attributes.id }
+      spokes = { for k, v in module.ireland_spoke_vpcs : k => v.vpc_attributes.id }
       inspection = module.ireland_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
     nvirginia = {
-      spokes     = { for k, v in module.nvirginia_spoke_vpcs : k => v.vpc_attributes.id }
+      spokes = { for k, v in module.nvirginia_spoke_vpcs : k => v.vpc_attributes.id }
       inspection = module.nvirginia_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
-    sydney = {
-      spokes     = { for k, v in module.sydney_spoke_vpcs : k => v.vpc_attributes.id }
-      inspection = module.sydney_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
-    }
+    oregon = { for k, v in module.oregon_spoke_vpcs : k => v.vpc_attributes.id }
   }
 }

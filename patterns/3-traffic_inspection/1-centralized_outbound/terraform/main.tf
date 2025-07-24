@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- centralized_outbound/main.tf ---
+# --- patterns/3-traffic_inspection/1-centralized_outbound/terraform/main.tf ---
 
 # ---------- AWS CLOUD WAN RESOURCES ----------
 # Global Network
@@ -35,7 +35,7 @@ resource "aws_networkmanager_core_network" "core_network" {
 module "ireland_spoke_vpcs" {
   for_each  = var.ireland_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
+  version   = "4.5.0"
   providers = { aws = aws.awsireland }
 
   name       = each.key
@@ -67,7 +67,7 @@ module "ireland_spoke_vpcs" {
 # Inspection VPC - definition in variables.tf
 module "ireland_inspection_vpc" {
   source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
+  version   = "3.4.0"
   providers = { aws = aws.awsireland }
 
   core_network_arn = aws_networkmanager_core_network.core_network.arn
@@ -76,15 +76,15 @@ module "ireland_inspection_vpc" {
   central_vpcs = {
     inspection = {
       type       = "egress_with_inspection"
-      name       = var.ireland_inspection_vpc.name
-      cidr_block = var.ireland_inspection_vpc.cidr_block
-      az_count   = var.ireland_inspection_vpc.number_azs
+      name       = "inspection-vpc-ireland"
+      cidr_block = var.inspection_vpc.cidr_block
+      az_count   = var.inspection_vpc.number_azs
 
       subnets = {
-        public    = { netmask = var.ireland_inspection_vpc.public_subnet_netmask }
-        endpoints = { netmask = var.ireland_inspection_vpc.inspection_subnet_netmask }
+        public    = { netmask = var.inspection_vpc.public_subnet_netmask }
+        endpoints = { netmask = var.inspection_vpc.inspection_subnet_netmask }
         core_network = {
-          netmask = var.ireland_inspection_vpc.cnetwork_subnet_netmask
+          netmask = var.inspection_vpc.cnetwork_subnet_netmask
 
           tags = { inspection = "true" }
         }
@@ -127,7 +127,7 @@ module "ireland_compute" {
 module "nvirginia_spoke_vpcs" {
   for_each  = var.nvirginia_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
+  version   = "4.5.0"
   providers = { aws = aws.awsnvirginia }
 
   name       = each.key
@@ -159,7 +159,7 @@ module "nvirginia_spoke_vpcs" {
 # Inspection VPC - definition in variables.tf
 module "nvirginia_inspection_vpc" {
   source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
+  version   = "3.4.0"
   providers = { aws = aws.awsnvirginia }
 
   core_network_arn = aws_networkmanager_core_network.core_network.arn
@@ -168,15 +168,15 @@ module "nvirginia_inspection_vpc" {
   central_vpcs = {
     inspection = {
       type       = "egress_with_inspection"
-      name       = var.nvirginia_inspection_vpc.name
-      cidr_block = var.nvirginia_inspection_vpc.cidr_block
-      az_count   = var.nvirginia_inspection_vpc.number_azs
+      name       = "inspection-vpc-nvirginia"
+      cidr_block = var.inspection_vpc.cidr_block
+      az_count   = var.inspection_vpc.number_azs
 
       subnets = {
-        public    = { netmask = var.nvirginia_inspection_vpc.public_subnet_netmask }
-        endpoints = { netmask = var.nvirginia_inspection_vpc.inspection_subnet_netmask }
+        public    = { netmask = var.inspection_vpc.public_subnet_netmask }
+        endpoints = { netmask = var.inspection_vpc.inspection_subnet_netmask }
         core_network = {
-          netmask = var.nvirginia_inspection_vpc.cnetwork_subnet_netmask
+          netmask = var.inspection_vpc.cnetwork_subnet_netmask
 
           tags = { inspection = "true" }
         }
@@ -214,13 +214,13 @@ module "nvirginia_compute" {
   vpc_information = var.nvirginia_spoke_vpcs[each.key]
 }
 
-# ---------- RESOURCES IN SYDNEY ----------
+# ---------- RESOURCES IN OREGON ----------
 # Spoke VPCs - definition in variables.tf
-module "sydney_spoke_vpcs" {
-  for_each  = var.sydney_spoke_vpcs
+module "oregon_spoke_vpcs" {
+  for_each  = var.oregon_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
-  providers = { aws = aws.awssydney }
+  version   = "4.5.0"
+  providers = { aws = aws.awsoregon }
 
   name       = each.key
   cidr_block = each.value.cidr_block
@@ -248,60 +248,14 @@ module "sydney_spoke_vpcs" {
   }
 }
 
-# Inspection VPC - definition in variables.tf
-module "sydney_inspection_vpc" {
-  source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
-  providers = { aws = aws.awssydney }
-
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
-
-  ipv4_network_definition = "10.0.0.0/8"
-  central_vpcs = {
-    inspection = {
-      type       = "egress_with_inspection"
-      name       = var.sydney_inspection_vpc.name
-      cidr_block = var.sydney_inspection_vpc.cidr_block
-      az_count   = var.sydney_inspection_vpc.number_azs
-
-      subnets = {
-        public    = { netmask = var.sydney_inspection_vpc.public_subnet_netmask }
-        endpoints = { netmask = var.sydney_inspection_vpc.inspection_subnet_netmask }
-        core_network = {
-          netmask = var.sydney_inspection_vpc.cnetwork_subnet_netmask
-
-          tags = { inspection = "true" }
-        }
-      }
-    }
-  }
-
-  aws_network_firewall = {
-    inspection = {
-      name        = "anfw-sydney"
-      description = "AWS Network Firewall - ap-southeast-2"
-      policy_arn  = module.sydney_anfw_policy.policy_arn
-    }
-  }
-}
-
-# AWS Network Firewall policy
-module "sydney_anfw_policy" {
-  source    = "../../../tf_modules/firewall_policy"
-  providers = { aws = aws.awssydney }
-
-  identifier   = var.identifier
-  traffic_flow = "north-south"
-}
-
 # EC2 Instances (in Spoke VPCs) and EC2 Instance Connect endpoint
-module "sydney_compute" {
-  for_each  = module.sydney_spoke_vpcs
+module "oregon_compute" {
+  for_each  = module.oregon_spoke_vpcs
   source    = "../../../tf_modules/compute"
-  providers = { aws = aws.awssydney }
+  providers = { aws = aws.awsoregon }
 
   identifier      = var.identifier
   vpc_name        = each.key
   vpc             = each.value
-  vpc_information = var.sydney_spoke_vpcs[each.key]
+  vpc_information = var.oregon_spoke_vpcs[each.key]
 }

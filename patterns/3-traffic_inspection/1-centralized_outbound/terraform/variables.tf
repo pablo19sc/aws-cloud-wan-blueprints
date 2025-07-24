@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- centralized_outbound/variables.tf ---
+# --- patterns/3-traffic_inspection/1-centralized_outbound/terraform/variables.tf ---
 
 # Project Identifier
 variable "identifier" {
@@ -17,7 +17,7 @@ variable "aws_regions" {
   default = {
     ireland   = "eu-west-1"
     nvirginia = "us-east-1"
-    sydney    = "ap-southeast-2"
+    oregon    = "us-west-2"
   }
 }
 
@@ -50,20 +50,6 @@ variable "ireland_spoke_vpcs" {
   }
 }
 
-variable "ireland_inspection_vpc" {
-  type        = any
-  description = "Information about the Inspection VPC to create in eu-west-1."
-
-  default = {
-    name                      = "inspection-eu-west-1"
-    cidr_block                = "10.100.0.0/16"
-    number_azs                = 2
-    public_subnet_netmask     = 28
-    inspection_subnet_netmask = 28
-    cnetwork_subnet_netmask   = 28
-  }
-}
-
 # Definition of the VPCs to create in N. Virginia Region
 variable "nvirginia_spoke_vpcs" {
   type        = any
@@ -93,28 +79,14 @@ variable "nvirginia_spoke_vpcs" {
   }
 }
 
-variable "nvirginia_inspection_vpc" {
+# Definition of the VPCs to create in Oregon Region
+variable "oregon_spoke_vpcs" {
   type        = any
-  description = "Information about the Inspection VPC to create in us-east-1."
-
-  default = {
-    name                      = "inspection-us-east-1"
-    cidr_block                = "10.100.0.0/16"
-    number_azs                = 2
-    public_subnet_netmask     = 28
-    inspection_subnet_netmask = 28
-    cnetwork_subnet_netmask   = 28
-  }
-}
-
-# Definition of the VPCs to create in Sydney Region
-variable "sydney_spoke_vpcs" {
-  type        = any
-  description = "Information about the VPCs to create in ap-southeast-2."
+  description = "Information about the VPCs to create in us-west-2."
 
   default = {
     "prod" = {
-      name                    = "prod-ap-southeast-2"
+      name                    = "prod-us-west-2"
       segment                 = "production"
       number_azs              = 2
       cidr_block              = "10.20.0.0/24"
@@ -124,7 +96,7 @@ variable "sydney_spoke_vpcs" {
       instance_type           = "t2.micro"
     }
     "dev" = {
-      name                    = "dev-ap-southeast-2"
+      name                    = "dev-us-west-2"
       segment                 = "development"
       number_azs              = 2
       cidr_block              = "10.20.1.0/24"
@@ -136,12 +108,12 @@ variable "sydney_spoke_vpcs" {
   }
 }
 
-variable "sydney_inspection_vpc" {
+# Definition of Inspection VPC
+variable "inspection_vpc" {
   type        = any
-  description = "Information about the Inspection VPC to create in ap-southeast-2."
+  description = "Information about the Inspection VPC."
 
   default = {
-    name                      = "insp-ap-southeast-2"
     cidr_block                = "10.100.0.0/16"
     number_azs                = 2
     public_subnet_netmask     = 28

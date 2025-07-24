@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- centralized_outbound/providers.tf ---
+# --- patterns/3-traffic_inspection/1-centralized_outbound/terraform/providers.tf ---
 
 terraform {
   required_version = ">= 1.3.0"
@@ -25,8 +25,8 @@ provider "aws" {
   alias  = "awsnvirginia"
 }
 
-# Provider definitios for Sydney Region
+# Provider definitios for Oregon Region
 provider "aws" {
-  region = var.aws_regions.sydney
-  alias  = "awssydney"
+  region = var.aws_regions.oregon
+  alias  = "awsoregon"
 }

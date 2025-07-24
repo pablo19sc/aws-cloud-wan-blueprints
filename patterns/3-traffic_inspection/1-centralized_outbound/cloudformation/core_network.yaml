@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Inspection - Centralized Outbound (Global Network & Core Network)
+Description: AWS Cloud WAN centralized outbound (Global & core network)
 
 Resources:
   GlobalNetwork:
@@ -27,7 +27,7 @@ Resources:
           edge-locations:
             - location: eu-west-1
             - location: us-east-1
-            - location: ap-southeast-2
+            - location: us-west-2
         segments:
           - name: production
             require-attachment-acceptance: false
@@ -59,8 +59,24 @@ Resources:
             via:
               network-function-groups:
                 - inspectionVpcs
+              with-edge-overrides:
+                - edge-sets:
+                    - - us-west-2
+                  use-edge-location: us-east-1
           - action: send-to
             segment: development
             via:
               network-function-groups:
                 - inspectionVpcs
+              with-edge-overrides:
+                - edge-sets:
+                    - - us-west-2
+                  use-edge-location: us-east-1
+
+Outputs:
+  CoreNetworkId:
+    Description: Core Network ID.
+    Value: !GetAtt CoreNetwork.CoreNetworkId
+  CoreNetworkArn:
+    Description: Core Network ARN.
+    Value: !GetAtt CoreNetwork.CoreNetworkArn
