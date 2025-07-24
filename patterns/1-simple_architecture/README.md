@@ -13,7 +13,7 @@ Within this section of the blueprints, we want to provide a simple example of AW
 
 **Note** that in this section we are not covering *service insertion*, as this routing configuration is covered in detail in the [Traffic inspection architectures](../3-traffic_inspection/) section.
 
-[IMAGE]
+![Simple Architecture](../../images/patterns_simple_architecture.png)
 
 ```json
 {

@@ -1,6 +1,6 @@
 # AWS Cloud WAN simple architecture (AWS CloudFormation)
 
-[IMAGE]
+![Simple Architecture](../../../images/patterns_simple_architecture.png)
 
 ## Prerequisites
 - An AWS account with an IAM user with the appropriate permissions
