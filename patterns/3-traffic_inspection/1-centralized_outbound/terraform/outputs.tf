@@ -15,11 +15,11 @@ output "vpcs" {
   description = "VPCs created."
   value = {
     ireland = {
-      spokes = { for k, v in module.ireland_spoke_vpcs : k => v.vpc_attributes.id }
+      spokes     = { for k, v in module.ireland_spoke_vpcs : k => v.vpc_attributes.id }
       inspection = module.ireland_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
     nvirginia = {
-      spokes = { for k, v in module.nvirginia_spoke_vpcs : k => v.vpc_attributes.id }
+      spokes     = { for k, v in module.nvirginia_spoke_vpcs : k => v.vpc_attributes.id }
       inspection = module.nvirginia_inspection_vpc.central_vpcs.inspection.vpc_attributes.id
     }
     oregon = { for k, v in module.oregon_spoke_vpcs : k => v.vpc_attributes.id }
