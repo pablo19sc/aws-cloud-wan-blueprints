@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Simple Architecture - 2 AWS Regions, 2 segments
+Description: AWS Cloud WAN Simple Architecture (VPCs & workloads)
 Transform: 'AWS::LanguageExtensions'
 
 Parameters:

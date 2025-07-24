@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Inspection - Centralized Outbound (Global Network & Core Network)
+Description: AWS Cloud WAN Simple Architecture (Global & core network)
 
 Resources:
   GlobalNetwork:
