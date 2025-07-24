@@ -61,9 +61,9 @@ Resources:
     Properties:
       AllowExternalPrincipals: true
       Name: resources-share-multi-account
-      Principals: 
+      Principals:
         - !Ref SpokeAccount
-      ResourceArns: 
+      ResourceArns:
         - !GetAtt CoreNetwork.CoreNetworkArn
 
 Outputs:
