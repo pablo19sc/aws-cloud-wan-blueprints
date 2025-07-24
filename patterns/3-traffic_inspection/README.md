@@ -1,14 +1,13 @@
 
 ## AWS Cloud WAN Blueprints - Traffic Inspection architectures
 
-Within this section of the blueprints, you will see different traffic inspection patterns with AWS Cloud WAN. The use cases covered are:
+Within this section of the blueprints, we are providing several examples on how you can include firewalls in the Cloud WAN traffic. There are several use cases covered:
 
-- [Centralized Oubtound](#centralized-outbound)
-- [Centralized Oubtound - with an AWS Region without Inspection VPC](#centralized-outbound-aws-region-without-inspection-vpc)
-- [East-West (dual-hop)](#eastwest-traffic-dual-hop)
-- [East-West (single-hop)](#eastwest-traffic-single-hop)
-- [East/West traffic (Dual-hop) when the spoke VPCs are attached to AWS Transit Gateway](#eastwest-traffic-dual-hop-spoke-vpcs-attached-to-aws-transit-gateway)
-- [East/West traffic (Single-hop) when the spoke VPCs are attached to AWS Transit Gateway](#eastwest-traffic-single-hop-spoke-vpcs-attached-to-aws-transit-gateway)
+- [Centralized Outbound (send-to)](./1-centralized_outbound/)
+- [East-West (send-via)]()
+- [Outbound & east-west (dual-hop)]()
+- [Outbound & east-west (single-hop)]()
+- [Outbound & east-west (VPCs attached to Transit Gateway)]()
 
 In all use cases, you will find two routing domains: **production** and **development**. The inspection requirements are the following ones:
 
@@ -21,235 +20,7 @@ This repository does not focus on [AWS Network Firewall](https://aws.amazon.com/
 * For egress traffic, only traffic to *.amazon.com* domains is allowed.
 * For east-west traffic, any ICMP packets are alerted and allowed.
 
-### Centralized Outbound
-
-The Core Network's policy creates the following resources:
-
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: in each routing domain's segment, a [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) action is created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.
-
-![Centralized Outbound](../../images/centralizedOutbound.png)
-
-```json
-{
-    "version": "2021.12",
-    "core-network-configuration": {
-      "vpn-ecmp-support": true,
-      "asn-ranges": [
-        "64520-65525"
-      ],
-      "edge-locations": [
-        {
-          "location": "eu-west-1"
-        },
-        {
-          "location": "us-east-1"
-        },
-        {
-          "location": "ap-southeast-2"
-        }
-      ]
-    },
-    "segments": [
-      {
-        "name": "production",
-        "require-attachment-acceptance": false,
-        "isolate-attachments": true
-      },
-      {
-        "name": "development",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "network-function-groups": [
-      {
-        "name": "inspectionVpcs",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "segment-actions": [
-      {
-        "action": "send-to",
-        "segment": "production",
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ]
-        }
-      },
-      {
-        "action": "send-to",
-        "segment": "development",
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ]
-        }
-      }
-    ],
-    "attachment-policies": [
-      {
-        "rule-number": 100,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-value",
-            "operator": "equals",
-            "key": "inspection",
-            "value": "true"
-          }
-        ],
-        "action": {
-            "add-to-network-function-group": "inspectionVpcs"
-        }
-      },
-      {
-        "rule-number": 200,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-exists",
-            "key": "domain"
-          }
-        ],
-        "action": {
-          "association-method": "tag",
-          "tag-value-of-key": "domain"
-        }
-      }
-    ]
-}
-```
-
-### Centralized Outbound (AWS Region without Inspection VPC)
-
-This example is similar to the one above, with the difference that we add 1 AWS Region that does not have Inspection VPC. We take advantage of Cloud WAN's service insertion feature to make sure outbound traffic is inspected by the closest Region with Inspection VPC. In this example, London (eu-west-2) does not have Inspection VPC, and we want Ireland (eu-west-1) to  inspect outbound traffic from both Ireland and London.
-
-The Core Network's policy creates the following resources:
-
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: in each routing domain's segment, a [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) action is created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.
-  * A *with-edge-overrides* parameter is included to indicate that traffic from *eu-west-2* should be inspected by *eu-west-1* (given *eu-west-2* won't have a local Inspection VPC).
-
-![Centralized Outbound](../../images/centralizedOutbound_regionWithoutInspection.png)
-
-```json
-{
-  "version": "2021.12",
-  "core-network-configuration": {
-    "vpn-ecmp-support": true,
-    "asn-ranges": [
-      "64520-65525"
-    ],
-    "edge-locations": [
-      {
-        "location": "eu-west-1"
-      },
-      {
-        "location": "eu-west-2"
-      },
-      {
-        "location": "us-east-1"
-      },
-      {
-        "location": "ap-southeast-2"
-      }
-    ]
-  },
-  "segments": [
-    {
-      "name": "production",
-      "require-attachment-acceptance": false,
-      "isolate-attachments": true
-    },
-    {
-      "name": "development",
-      "require-attachment-acceptance": false
-    }
-  ],
-  "network-function-groups": [
-    {
-      "name": "inspectionVpcs",
-      "require-attachment-acceptance": false
-    }
-  ],
-  "segment-actions": [
-    {
-      "action": "send-to",
-      "segment": "production",
-      "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ],
-        "with-edge-overrides": [
-          {
-            "edge-sets": [
-              [
-                "eu-west-2"
-              ]
-            ],
-            "use-edge-location": "eu-west-1"
-          }
-        ]
-      }
-    },
-    {
-      "action": "send-to",
-      "segment": "development",
-      "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ],
-        "with-edge-overrides": [
-          {
-            "edge-sets": [
-              [
-                "eu-west-2"
-              ]
-            ],
-            "use-edge-location": "eu-west-1"
-          }
-        ]
-      }
-    }
-  ],
-  "attachment-policies": [
-    {
-      "rule-number": 100,
-      "condition-logic": "or",
-      "conditions": [
-        {
-          "type": "tag-value",
-          "operator": "equals",
-          "key": "inspection",
-          "value": "true"
-        }
-      ],
-      "action": {
-        "add-to-network-function-group": "inspectionVpcs"
-      }
-    },
-    {
-      "rule-number": 200,
-      "condition-logic": "or",
-      "conditions": [
-        {
-          "type": "tag-exists",
-          "key": "domain"
-        }
-      ],
-      "action": {
-        "association-method": "tag",
-        "tag-value-of-key": "domain"
-      }
-    }
-  ]
-}
-```
-
-### East/West traffic (Dual-hop)
+<!-- ### East/West traffic (Dual-hop)
 
 The Core Network's policy creates the following resources:
 
@@ -797,4 +568,4 @@ The following resources are created:
     }
   ]
 }
-```
+``` -->
