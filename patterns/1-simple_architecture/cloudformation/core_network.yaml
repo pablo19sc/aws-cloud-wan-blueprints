@@ -53,8 +53,8 @@ Resources:
             conditions:
               - type: tag-value
                 operator: equals
-                key: domain
-                value: sharedservice
+                key: sharedservice
+                value: true
             action:
               association-method: constant
               segment: shared
@@ -65,3 +65,11 @@ Resources:
             share-with:
               - development
               - production
+
+Outputs:
+  CoreNetworkId:
+    Description: Core Network ID.
+    Value: !GetAtt CoreNetwork.CoreNetworkId
+  CoreNetworkArn:
+    Description: Core Network ARN.
+    Value: !GetAtt CoreNetwork.CoreNetworkArn

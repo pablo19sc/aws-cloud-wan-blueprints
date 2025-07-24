@@ -57,7 +57,9 @@ module "ireland_spoke_vpcs" {
       netmask            = each.value.cnetwork_subnet_netmask
       require_acceptance = false
 
-      tags = {
+      tags = each.value.segment == "sharedservice" ? {
+        each.value.segment = true
+        } : {
         domain = each.value.segment
       }
     }
@@ -103,7 +105,9 @@ module "nvirginia_spoke_vpcs" {
       netmask            = each.value.cnetwork_subnet_netmask
       require_acceptance = false
 
-      tags = {
+      tags = each.value.segment == "sharedservice" ? {
+        each.value.segment = true
+        } : {
         domain = each.value.segment
       }
     }

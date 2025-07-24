@@ -19,12 +19,13 @@ repos:
         args:
           - --args=--recursive
 
-  - repo: https://github.com/aws-cloudformation/cfn-lint
-    rev: v0.83.5
-    hooks:
-      - id: cfn-lint
-        files: \.(yaml|yml|json)$
-        exclude: ^\.config/.*$|^\.pre-commit-config\.yaml$|^\.github/.*$
+  # cfn-lint throwing false positives due to the use of For::Each - removing check while fixing
+  # - repo: https://github.com/aws-cloudformation/cfn-lint
+  #   rev: v0.83.5
+  #   hooks:
+  #     - id: cfn-lint
+  #       files: \.(yaml|yml|json)$
+  #       exclude: ^\.config/.*$|^\.pre-commit-config\.yaml$|^\.github/.*$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

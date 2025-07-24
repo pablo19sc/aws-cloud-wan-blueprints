@@ -466,7 +466,7 @@ Resources:
               - !Ref AWS::StackName
 
   # ---------- SHARED SERVICES VPC ----------
-  SharedServicesVPC:
+  SharedVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: !FindInMap [SharedVpcCIDR, !Ref 'AWS::Region', CIDR]
@@ -564,8 +564,8 @@ Resources:
             - - shared-attachment
               - !Ref AWS::StackName
               - !Ref AWS::Region
-        - Key: domain
-          Value: sharedservice
+        - Key: sharedservice
+          Value: true
       VpcArn:
         Fn::Join:
           - ""

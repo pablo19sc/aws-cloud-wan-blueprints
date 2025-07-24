@@ -81,8 +81,8 @@ data "aws_networkmanager_core_network_policy_document" "policy" {
     conditions {
       type     = "tag-value"
       operator = "equals"
-      key      = "domain"
-      value    = "sharedservice"
+      key      = "sharedservice"
+      value    = "true"
     }
 
     action {
