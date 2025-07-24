@@ -48,7 +48,7 @@ aws cloudformation deploy --stack-name multi-account-nvirginia --template-file w
 
 **Note** EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
 
-### Clean-up
+### Clean-up
 - Assume credentials for the *Spoke AWS Account*. Delete the deployed stacks.
 
 ```bash
