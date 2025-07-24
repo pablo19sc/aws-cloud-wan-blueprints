@@ -29,15 +29,16 @@ The guide covers advanced architectures, including integrating SD-WAN with AWS C
 These blueprints have been designed to be consumed in the following manners:
 
 * **Reference Architecture**. You can use the examples and patterns provided as a guide to build your target architecture. From the architectures (and code provided) to can review and test the specific architecture and use it as reference to replicate in your environment.
-* **Copy & paste**. You can do a quick copy-and-paste of a specific architecture snippet into your own environment, using the blueprints as the starting point for your implementation. You can then adapt the initial pattern to customize it to your specific needs. Of course, we recommend to deploy first in pre-production and have a controlled rollout to production environments after enough testing. 
+* **Copy & paste**. You can do a quick copy-and-paste of a specific architecture snippet into your own environment, using the blueprints as the starting point for your implementation. You can then adapt the initial pattern to customize it to your specific needs. Of course, we recommend to deploy first in pre-production and have a controlled rollout to production environments after enough testing.
 
 **The Cloud WAN blueprints are not intended to be consumed as-is directly from this project**. The patterns provided will use local varibles (as defaults or required to be provided by you) that we recommend you change when deploying in your pre-production or testing environments.
 
 ## Patterns
 
-1. Simple architectures (TBD)
-2. [Traffic inspection architectures](./patterns/2-traffic_inspection/)
-3. Hybrid architectures (TBD)
+1. [Simple architecture](./patterns/1-simple_architecture/)
+2. [Multi-AWS Account](./patterns/2-multi_account/)
+3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
+4. Hybrid architectures (TBD)
 
 ## AWS Cloud WAN components and features
 
@@ -90,7 +91,7 @@ The service insertion mechanism defines how inspection is performed, supporting:
 
 To start defining Service Insertion we need to start by indicating how to include the firewalls in the network. The integration works the same as with Transit Gateway: by attaching an Inspection VPC to the network. However, there are some changes in how the inspection routing configuration works.
 
-To start, Inspection VPCs are associated to [Network Function Groups](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFGs). A NFG acts as a container for attachments hosting security functions and can be thought of as a managed security segment. Like segments, NFGs are global constructs and can be associated with multiple Inspection VPCs, supporting cross-region inspection to ensure consistent security enforcement across a global network. You can have one or many Network Function Groups, depending on how your firewalls are grouped. 
+To start, Inspection VPCs are associated to [Network Function Groups](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFGs). A NFG acts as a container for attachments hosting security functions and can be thought of as a managed security segment. Like segments, NFGs are global constructs and can be associated with multiple Inspection VPCs, supporting cross-region inspection to ensure consistent security enforcement across a global network. You can have one or many Network Function Groups, depending on how your firewalls are grouped.
 
 To allow inspection, you have two different actions to configure in Cloud WAN:
 
@@ -105,7 +106,7 @@ A Cloud WAN attachment is a connection between a network resource (such as a VPC
 2. Site-to-Site VPN – Connect on-premises networks to Cloud WAN using an IPsec VPN tunnel.
 3. Direct Connect Gateway – Connect on-premise networks to Cloud WAN using an AWS Direct Connect.
 4. Transit Gateway Route Table – Connect an existing AWS Transit Gateway (TGW) to Cloud WAN for seamless integration.
-5. Connect - Connect to third-party SD-WAN appliances using high-performance attachments providing seamless connectivity. 
+5. Connect - Connect to third-party SD-WAN appliances using high-performance attachments providing seamless connectivity.
     1. GRE (Generic Routing Encapsulation).
     2. Tunnel-less Connect (No Encapsulation).
 
@@ -141,4 +142,3 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
-

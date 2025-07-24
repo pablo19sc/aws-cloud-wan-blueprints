@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.83.5
+    hooks:
+      - id: terraform_fmt
+        files: \.tf$
+        args:
+          - --args=-recursive
+      - id: terraform_docs
+        files: (\.tf|\.header\.md)$
+        args:
+          - --hook-config=--path-to-file=.config/.terraform-docs.yaml
+      - id: terraform_validate
+        files: \.tf$
+        args:
+          - --hook-config=--retry-once-with-cleanup=true
+      - id: terraform_tflint
+        files: \.tf$
+        args:
+          - --args=--recursive
+
+  # cfn-lint throwing false positives due to the use of For::Each - removing check while fixing
+  # - repo: https://github.com/aws-cloudformation/cfn-lint
+  #   rev: v0.83.5
+  #   hooks:
+  #     - id: cfn-lint
+  #       files: \.(yaml|yml|json)$
+  #       exclude: ^\.config/.*$|^\.pre-commit-config\.yaml$|^\.github/.*$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
