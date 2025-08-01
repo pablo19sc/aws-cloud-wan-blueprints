@@ -14,16 +14,6 @@ resource "awscc_networkmanager_global_network" "global_network" {
   }]
 }
 
-# resource "aws_networkmanager_global_network" "global_network" {
-#   provider = aws.awsnvirginia
-
-#   description = "Global Network - ${var.identifier}"
-
-#   tags = {
-#     Name = "Global Network - ${var.identifier}"
-#   }
-# }
-
 # Core Network
 resource "awscc_networkmanager_core_network" "core_network" {
   global_network_id = awscc_networkmanager_global_network.global_network.id
@@ -36,20 +26,6 @@ resource "awscc_networkmanager_core_network" "core_network" {
     value = "Core Network - ${var.identifier}"
   }]
 }
-
-# resource "aws_networkmanager_core_network" "core_network" {
-#   provider = aws.awsnvirginia
-
-#   description       = "Core Network - ${var.identifier}"
-#   global_network_id = aws_networkmanager_global_network.global_network.id
-
-#   create_base_policy   = true
-#   base_policy_document = var.send_via_mode == "dualhop" ? data.aws_networkmanager_core_network_policy_document.policy_dualhop.json : data.aws_networkmanager_core_network_policy_document.policy_singlehop.json
-
-#   tags = {
-#     Name = "Core Network - ${var.identifier}"
-#   }
-# }
 
 # ---------- RESOURCES IN IRELAND ----------
 # Spoke VPCs - definition in variables.tf
