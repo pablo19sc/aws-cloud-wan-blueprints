@@ -47,4 +47,7 @@ terraform.rc
 # TF Local Files
 .terraform.lock.hcl
 
+# Draw.io temp file
+*.drawio.bkp
+
 .temp

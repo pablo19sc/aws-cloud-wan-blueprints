@@ -8,8 +8,16 @@ repos:
           - --args=-recursive
       - id: terraform_docs
         files: (\.tf|\.header\.md)$
+        exclude: |
+          (?x)^(
+            .*\.terraform/.*|
+            patterns/3-traffic_inspection/5-east_west_tgw_spoke_vpcs_dualhop/terraform/transit_gateway/.*|
+            patterns/3-traffic_inspection/6-east_west_tgw_spoke_vpcs_singlehop/terraform/transit_gateway/.*|
+            patterns/tf_modules/compute/.*|
+            patterns/tf_modules/firewall_policy/.*
+          )$
         args:
-          - --hook-config=--path-to-file=.config/.terraform-docs.yaml
+          - --hook-config=--path-to-file=.terraform-docs.yaml
       - id: terraform_validate
         files: \.tf$
         args:
