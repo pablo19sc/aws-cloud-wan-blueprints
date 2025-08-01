@@ -10,23 +10,31 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 5.67.0"
     }
+    awscc = {
+      source  = "hashicorp/awscc"
+      version = ">= 1.51.0"
+    }
   }
 }
 
-# Provider definitios for Ireland Region
+# Provider definition for Ireland Region
 provider "aws" {
   region = var.aws_regions.ireland
   alias  = "awsireland"
 }
 
-# Provider definitios for N. Virginia Region
+# Provider definition for N. Virginia Region
 provider "aws" {
   region = var.aws_regions.nvirginia
   alias  = "awsnvirginia"
 }
 
-# Provider definitios for Oregon Region
+# Provider definition for Oregon Region
 provider "aws" {
   region = var.aws_regions.oregon
   alias  = "awsoregon"
+}
+
+provider "awscc" {
+  region = var.aws_regions.oregon
 }

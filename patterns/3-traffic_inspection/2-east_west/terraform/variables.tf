@@ -15,7 +15,7 @@ variable "send_via_mode" {
   type        = string
   description = "send-via inspection mode: dualhop (default) or singlehop"
 
-  # default = "dualhop"
+  default = "dualhop"
 }
 
 # AWS Regions

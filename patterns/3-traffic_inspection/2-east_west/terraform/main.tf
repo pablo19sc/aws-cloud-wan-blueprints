@@ -5,30 +5,51 @@
 
 # ---------- AWS CLOUD WAN RESOURCES ----------
 # Global Network
-resource "aws_networkmanager_global_network" "global_network" {
-  provider = aws.awsnvirginia
+resource "awscc_networkmanager_global_network" "global_network" {
+  description = "example"
 
-  description = "Global Network - ${var.identifier}"
-
-  tags = {
-    Name = "Global Network - ${var.identifier}"
-  }
+  tags = [{
+    key   = "Name"
+    value = "Global Network - ${var.identifier}"
+  }]
 }
+
+# resource "aws_networkmanager_global_network" "global_network" {
+#   provider = aws.awsnvirginia
+
+#   description = "Global Network - ${var.identifier}"
+
+#   tags = {
+#     Name = "Global Network - ${var.identifier}"
+#   }
+# }
 
 # Core Network
-resource "aws_networkmanager_core_network" "core_network" {
-  provider = aws.awsnvirginia
-
+resource "awscc_networkmanager_core_network" "core_network" {
+  global_network_id = awscc_networkmanager_global_network.global_network.id
   description       = "Core Network - ${var.identifier}"
-  global_network_id = aws_networkmanager_global_network.global_network.id
 
-  create_base_policy   = true
-  base_policy_document = var.send_via_mode == "dualhop" ? data.aws_networkmanager_core_network_policy_document.policy_dualhop.json : data.aws_networkmanager_core_network_policy_document.policy_singlehop.json
+  policy_document = var.send_via_mode == "dualhop" ? data.aws_networkmanager_core_network_policy_document.policy_dualhop.json : data.aws_networkmanager_core_network_policy_document.policy_singlehop.json
 
-  tags = {
-    Name = "Core Network - ${var.identifier}"
-  }
+  tags = [{
+    key   = "Name"
+    value = "Core Network - ${var.identifier}"
+  }]
 }
+
+# resource "aws_networkmanager_core_network" "core_network" {
+#   provider = aws.awsnvirginia
+
+#   description       = "Core Network - ${var.identifier}"
+#   global_network_id = aws_networkmanager_global_network.global_network.id
+
+#   create_base_policy   = true
+#   base_policy_document = var.send_via_mode == "dualhop" ? data.aws_networkmanager_core_network_policy_document.policy_dualhop.json : data.aws_networkmanager_core_network_policy_document.policy_singlehop.json
+
+#   tags = {
+#     Name = "Core Network - ${var.identifier}"
+#   }
+# }
 
 # ---------- RESOURCES IN IRELAND ----------
 # Spoke VPCs - definition in variables.tf
@@ -43,8 +64,8 @@ module "ireland_spoke_vpcs" {
   az_count   = each.value.number_azs
 
   core_network = {
-    id  = aws_networkmanager_core_network.core_network.id
-    arn = aws_networkmanager_core_network.core_network.arn
+    id  = awscc_networkmanager_core_network.core_network.core_network_id
+    arn = awscc_networkmanager_core_network.core_network.core_network_arn
   }
   core_network_routes = {
     workload = "0.0.0.0/0"
@@ -70,7 +91,7 @@ module "ireland_inspection_vpc" {
   version   = "3.4.0"
   providers = { aws = aws.awsireland }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {
@@ -133,8 +154,8 @@ module "nvirginia_spoke_vpcs" {
   az_count   = each.value.number_azs
 
   core_network = {
-    id  = aws_networkmanager_core_network.core_network.id
-    arn = aws_networkmanager_core_network.core_network.arn
+    id  = awscc_networkmanager_core_network.core_network.core_network_id
+    arn = awscc_networkmanager_core_network.core_network.core_network_arn
   }
   core_network_routes = {
     workload = "0.0.0.0/0"
@@ -160,7 +181,7 @@ module "nvirginia_inspection_vpc" {
   version   = "3.4.0"
   providers = { aws = aws.awsnvirginia }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {
@@ -223,8 +244,8 @@ module "oregon_spoke_vpcs" {
   az_count   = each.value.number_azs
 
   core_network = {
-    id  = aws_networkmanager_core_network.core_network.id
-    arn = aws_networkmanager_core_network.core_network.arn
+    id  = awscc_networkmanager_core_network.core_network.core_network_id
+    arn = awscc_networkmanager_core_network.core_network.core_network_arn
   }
   core_network_routes = {
     workload = "0.0.0.0/0"
@@ -250,7 +271,7 @@ module "oregon_inspection_vpc" {
   version   = "3.4.0"
   providers = { aws = aws.awsoregon }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {

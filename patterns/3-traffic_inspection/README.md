@@ -4,9 +4,9 @@
 Within this section of the blueprints, we are providing several examples on how you can include firewalls in the Cloud WAN traffic. There are several use cases covered:
 
 - [Centralized Outbound (send-to)](./1-centralized_outbound/)
-- [East-West (send-via)]()
-- [Outbound & east-west (dual-hop)]()
-- [Outbound & east-west (single-hop)]()
+- [East-West (send-via)](./2-east_west/)
+- [Outbound (send-to) & east-west (send-via dual-hop)]()
+- [Outbound (send-to) & east-west (send-via single-hop)]()
 - [Outbound & east-west (VPCs attached to Transit Gateway)]()
 
 In all use cases, you will find two routing domains: **production** and **development**. The inspection requirements are the following ones:
