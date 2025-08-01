@@ -103,11 +103,50 @@ jobs:
         pre-commit run terraform_validate --all-files
         pre-commit run terraform_tflint --all-files
 
-    - name: Run other checks
+    - name: Run other checks (auto-fixable)
+      id: other-checks
+      continue-on-error: true
       run: |
         echo "🔍 Running other code quality checks..."
-        pre-commit run check-merge-conflict --all-files
-        pre-commit run end-of-file-fixer --all-files
-        pre-commit run trailing-whitespace --all-files
-        pre-commit run check-yaml --all-files
-        pre-commit run check-json --all-files
+        pre-commit run check-merge-conflict --all-files || echo "check_merge_conflict_failed=true" >> $GITHUB_OUTPUT
+        pre-commit run end-of-file-fixer --all-files || echo "end_of_file_fixer_failed=true" >> $GITHUB_OUTPUT
+        pre-commit run trailing-whitespace --all-files || echo "trailing_whitespace_failed=true" >> $GITHUB_OUTPUT
+        pre-commit run check-yaml --all-files || echo "check_yaml_failed=true" >> $GITHUB_OUTPUT
+        pre-commit run check-json --all-files || echo "check_json_failed=true" >> $GITHUB_OUTPUT
+
+    - name: Auto-commit code quality fixes
+      if: steps.other-checks.outputs.end_of_file_fixer_failed == 'true' || steps.other-checks.outputs.trailing_whitespace_failed == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are changes to commit
+        if ! git diff --quiet; then
+          git add -A
+          git commit -m "Auto-fix: Code quality improvements
+          
+          - end-of-file-fixer: Ensure files end with newline
+          - trailing-whitespace: Remove trailing whitespace
+          
+          [skip ci]"
+          git push
+          echo "✅ Auto-committed code quality fixes"
+        else
+          echo "ℹ️ No changes to commit after code quality checks"
+        fi
+
+    - name: Run non-fixable checks
+      run: |
+        echo "🔍 Running non-fixable code quality checks..."
+        if [ "${{ steps.other-checks.outputs.check_merge_conflict_failed }}" == "true" ]; then
+          echo "❌ Merge conflict markers found - manual fix required"
+          pre-commit run check-merge-conflict --all-files
+        fi
+        if [ "${{ steps.other-checks.outputs.check_yaml_failed }}" == "true" ]; then
+          echo "❌ YAML syntax errors found - manual fix required"
+          pre-commit run check-yaml --all-files
+        fi
+        if [ "${{ steps.other-checks.outputs.check_json_failed }}" == "true" ]; then
+          echo "❌ JSON syntax errors found - manual fix required"
+          pre-commit run check-json --all-files
+        fi
