@@ -11,7 +11,9 @@
 - You will find three files creating Core Network policy documents.
     - `base_policy.yaml` is used to create the resources without the Service Insertion actions. This is done because a Service Insertion action cannot reference a Network Function Group that has to attachments associated.
     - `core_network.yaml` contains the final format of the policy document, with the Service Insertion actions.
-- Deploy the resources using `make deploy`.
+- Deploy the resources:
+    - Use `make deploy-dualhop` to test send-via dual-hop mode.
+    - Use `make deploy-singlehop` to test send-via single-hop mode.
 - Remember to clean up resoures once you are done by using `make undeploy`.
 
-**Note** EC2 instances, VPC endpoints, and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+**Note** EC2 instances and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.

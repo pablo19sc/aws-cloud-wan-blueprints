@@ -1,23 +1,23 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Inspection - East-West dual-hop (Global Network & Core Network)
+Description: AWS Cloud WAN centralized east-west single-hop (Global & core network)
 
 Resources:
   GlobalNetwork:
     Type: AWS::NetworkManager::GlobalNetwork
     Properties:
-      Description: Global Network - East-West (dual-hop)
+      Description: Global Network - East-West (single-hop)
       Tags:
         - Key: Name
-          Value: global-network-east-west-dualhop
+          Value: global-network-east-west-singlehop
 
   CoreNetwork:
     Type: AWS::NetworkManager::CoreNetwork
     Properties:
-      Description: Core Network - Centralized Outbound
+      Description: Core Network - East-West (single-hop)
       GlobalNetworkId: !Ref GlobalNetwork
       Tags:
         - Key: Name
-          Value: core-network-centralized-outbound
+          Value: core-network-east-west-singlehop
       PolicyDocument:
         version: "2021.12"
         core-network-configuration:
@@ -27,7 +27,7 @@ Resources:
           edge-locations:
             - location: eu-west-1
             - location: us-east-1
-            - location: ap-southeast-2
+            - location: us-west-2
         segments:
           - name: production
             require-attachment-acceptance: false
@@ -53,6 +53,24 @@ Resources:
             action:
               association-method: tag
               tag-value-of-key: domain
+        segment-actions:
+          - action: send-via
+            segment: production
+            mode: single-hop
+            via:
+              network-function-groups:
+                - inspectionVpcs
+              with-edge-override:
+                - edge-sets:
+                    - - eu-west-1
+                      - us-east-1
+                    - - eu-west-1
+                      - us-west-2
+                  use-edge-location: eu-west-1
+                - edge-sets:
+                    - - us-west-2
+                      - us-east-1
+                  use-edge-location: us-east-1
 
 Outputs:
   CoreNetworkId:

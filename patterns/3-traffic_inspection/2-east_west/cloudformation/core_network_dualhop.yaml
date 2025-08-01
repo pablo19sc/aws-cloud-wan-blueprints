@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Inspection - East-West dual-hop (Global Network & Core Network)
+Description: AWS Cloud WAN centralized east-west dual-hop (Global & core network)
 
 Resources:
   GlobalNetwork:
@@ -13,11 +13,11 @@ Resources:
   CoreNetwork:
     Type: AWS::NetworkManager::CoreNetwork
     Properties:
-      Description: Core Network - Centralized Outbound
+      Description: Core Network - East-West (dual-hop)
       GlobalNetworkId: !Ref GlobalNetwork
       Tags:
         - Key: Name
-          Value: core-network-centralized-outbound
+          Value: core-network-east-west-dualhop
       PolicyDocument:
         version: "2021.12"
         core-network-configuration:
@@ -27,7 +27,7 @@ Resources:
           edge-locations:
             - location: eu-west-1
             - location: us-east-1
-            - location: ap-southeast-2
+            - location: us-west-2
         segments:
           - name: production
             require-attachment-acceptance: false
@@ -62,3 +62,11 @@ Resources:
             via:
               network-function-groups:
                 - inspectionVpcs
+
+Outputs:
+  CoreNetworkId:
+    Description: Core Network ID.
+    Value: !GetAtt CoreNetwork.CoreNetworkId
+  CoreNetworkArn:
+    Description: Core Network ARN.
+    Value: !GetAtt CoreNetwork.CoreNetworkArn

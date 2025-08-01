@@ -29,7 +29,7 @@ Mappings:
       PrivateSubnetb: 10.0.0.48/28
       CWANSubneta: 10.0.0.64/28
       CWANSubnetb: 10.0.0.80/28
-    ap-southeast-2:
+    us-west-2:
       CIDR: 10.20.0.0/24
       EndpointSubneta: 10.20.0.0/28
       EndpointSubnetb: 10.20.0.16/28
@@ -54,7 +54,7 @@ Mappings:
       PrivateSubnetb: 10.0.1.48/28
       CWANSubneta: 10.0.1.64/28
       CWANSubnetb: 10.0.1.80/28
-    ap-southeast-2:
+    us-west-2:
       CIDR: 10.20.1.0/24
       EndpointSubneta: 10.20.1.0/28
       EndpointSubnetb: 10.20.1.16/28
@@ -79,7 +79,7 @@ Mappings:
       CWANSubnetb: 10.100.0.48/28
       PublicSubneta: 10.100.0.64/28
       PublicSubnetb: 10.100.0.80/28
-    ap-southeast-2:
+    us-west-2:
       CIDR: 10.100.0.0/16
       EndpointSubneta: 10.100.0.0/28
       EndpointSubnetb: 10.100.0.16/28
