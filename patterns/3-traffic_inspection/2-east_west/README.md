@@ -1,5 +1,4 @@
-
-## AWS Cloud WAN Blueprints - Traffic Inspection architectures (East-West)
+# AWS Cloud WAN Blueprints - Traffic Inspection architectures (East-West)
 
 This example shows a centralized east-west inspection architecture. The core network policy builds the following network:
 
@@ -9,7 +8,7 @@ This example shows a centralized east-west inspection architecture. The core net
     * **dual-hop (default)** - traffic traversing two AWS Regions is inspected in both of them.
     * **single-hop** - traffic traversing two AWS Regions is inspected in only one of them.
 
-### dual-hop
+## dual-hop
 
 ![East-West Dual-hop](../../../images/patterns_eastwest_dualhop.png)
 
@@ -117,7 +116,7 @@ This example shows a centralized east-west inspection architecture. The core net
 }
 ```
 
-### single-hop
+## single-hop
 
 ![East-West Single-hop](../../../images/patterns_eastwest_singlehop.png)
 
