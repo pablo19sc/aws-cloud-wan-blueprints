@@ -41,6 +41,9 @@ terraform.rc
 # macOs
 .DS_Store
 
+# TFLINT
+.tflint.hcl
+
 # TF Local Files
 .terraform.lock.hcl
 
