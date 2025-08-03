@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS Cloud WAN centralized outbound & east-west dual-hop (Global & core network)
+
+Resources:
+  GlobalNetwork:
+    Type: AWS::NetworkManager::GlobalNetwork
+    Properties:
+      Description: Global Network - Outbound-East-West (dual-hop)
+      Tags:
+        - Key: Name
+          Value: global-network-east-west-dualhop
+
+  CoreNetwork:
+    Type: AWS::NetworkManager::CoreNetwork
+    Properties:
+      Description: Core Network - Outbound-East-West (dual-hop)
+      GlobalNetworkId: !Ref GlobalNetwork
+      Tags:
+        - Key: Name
+          Value: core-network-outb-ew-dualhop
+      PolicyDocument:
+        version: "2021.12"
+        core-network-configuration:
+          vpn-ecmp-support: false
+          asn-ranges:
+            - 64520-65525
+          edge-locations:
+            - location: eu-west-1
+            - location: us-east-1
+            - location: us-west-2
+        segments:
+          - name: production
+            require-attachment-acceptance: false
+            isolate-attachments: true
+          - name: development
+            require-attachment-acceptance: false
+        network-function-groups:
+          - name: inspectionVpcs
+            require-attachment-acceptance: false
+          - name: outboundVpcs
+            require-attachment-acceptance: false
+        attachment-policies:
+          - rule-number: 100
+            conditions:
+              - type: tag-value
+                operator: equals
+                key: inspection
+                value: true
+            action:
+              add-to-network-function-group: inspectionVpcs
+          - rule-number: 200
+            conditions:
+              - type: tag-value
+                operator: equals
+                key: outbound
+                value: true
+            action:
+              add-to-network-function-group: outboundVpcs
+          - rule-number: 300
+            conditions:
+              - type: tag-exists
+                key: domain
+            action:
+              association-method: tag
+              tag-value-of-key: domain
+        segment-actions:
+          - action: send-via
+            segment: production
+            mode: dual-hop
+            when-sent-to:
+              segments: "*"
+            via:
+              network-function-groups:
+                - inspectionVpcs
+          - action: send-to
+            segment: production
+            via:
+              network-function-groups:
+                - outboundVpcs
+          - action: send-to
+            segment: development
+            via:
+              network-function-groups:
+                - outboundVpcs
+
+Outputs:
+  CoreNetworkId:
+    Description: Core Network ID.
+    Value: !GetAtt CoreNetwork.CoreNetworkId
+  CoreNetworkArn:
+    Description: Core Network ARN.
+    Value: !GetAtt CoreNetwork.CoreNetworkArn
