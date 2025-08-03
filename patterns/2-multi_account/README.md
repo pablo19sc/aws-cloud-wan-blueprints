@@ -1,5 +1,4 @@
-
-## AWS Cloud WAN Blueprints - Multi-AWS Account environment
+# AWS Cloud WAN Blueprints - Multi-AWS Account environment
 
 Within this section of the blueprints, we want to provide an example on how AWS Cloud WAN works in multi-AWS Account environments. The code provided will suppose the following two AWS Account types:
 

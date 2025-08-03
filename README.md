@@ -1,431 +1,144 @@
-# terraform-docs
+# AWS Cloud WAN Blueprints
 
-[![Build Status](https://github.com/terraform-docs/terraform-docs/workflows/ci/badge.svg)](https://github.com/terraform-docs/terraform-docs/actions) [![GoDoc](https://pkg.go.dev/badge/github.com/terraform-docs/terraform-docs)](https://pkg.go.dev/github.com/terraform-docs/terraform-docs) [![Go Report Card](https://goreportcard.com/badge/github.com/terraform-docs/terraform-docs)](https://goreportcard.com/report/github.com/terraform-docs/terraform-docs) [![Codecov Report](https://codecov.io/gh/terraform-docs/terraform-docs/branch/master/graph/badge.svg)](https://codecov.io/gh/terraform-docs/terraform-docs) [![License](https://img.shields.io/github/license/terraform-docs/terraform-docs)](https://github.com/terraform-docs/terraform-docs/blob/master/LICENSE) [![Latest release](https://img.shields.io/github/v/release/terraform-docs/terraform-docs)](https://github.com/terraform-docs/terraform-docs/releases)
+Welcome to the AWS Cloud WAN Blueprints!
 
-![terraform-docs-teaser](./images/terraform-docs-teaser.png)
+This project offers a practical guidance for deploying [AWS Cloud WAN](https://aws.amazon.com/cloud-wan/), featuring real-world examples and full end-to-end deployment code. These blueprints complement AWS documentation and AWS blogs by expanding on concepts with complete implementations in various Infrastructure and Code (IaC) languages.
 
-## What is terraform-docs
+Designed for Level 400 (expert) users, the blueprints assume a solid understanding of AWS networking, including VPCs, subnets, route tables, Transit Gateways, and Direct Connect, as well as general networking concepts like IP addressing, routing, IPSec, GRE, BGP, VRFs, SD-WAN, and network security.
 
-A utility to generate documentation from Terraform modules in various output formats.
+The guide covers advanced architectures, including integrating SD-WAN with AWS Cloud WAN, implementing multi-region inspection, extending VRFs, centralising internet egress with inspection, intra and inter segment inspection, and supporting multi-tenancy, particularly for Internet Service Providers and Telecommunications organisations.
 
-## Installation
+## Table of Content
 
-macOS users can install using [Homebrew]:
+- [Consumption](#consumption)
+- [Patterns](#patterns)
+- [AWS Cloud WAN components and features](#aws-cloud-wan-components-and-features)
+  - [Control Plane, AWS Network Manager, and Network Policy](#control-plane-aws-network-manager-and-the-network-policy)
+  - [Core Network Edge (CNE)](#core-network-edge-cne)
+  - [Segments](#segments)
+  - [Routing actions](#routing-actions)
+  - [Attachments](#attachments)
+  - [Attachment policies](#attachment-policies)
+- [FAQ](#faq)
+- [Authors](#authors)
+- [Contributing](#contributing)
+- [License](#license)
 
-```bash
-brew install terraform-docs
-```
+## Consumption
 
-or
+These blueprints have been designed to be consumed in the following manners:
 
-```bash
-brew install terraform-docs/tap/terraform-docs
-```
+* **Reference Architecture**. You can use the examples and patterns provided as a guide to build your target architecture. From the architectures (and code provided) to can review and test the specific architecture and use it as reference to replicate in your environment.
+* **Copy & paste**. You can do a quick copy-and-paste of a specific architecture snippet into your own environment, using the blueprints as the starting point for your implementation. You can then adapt the initial pattern to customize it to your specific needs. Of course, we recommend to deploy first in pre-production and have a controlled rollout to production environments after enough testing.
 
-Windows users can install using [Scoop]:
+**The Cloud WAN blueprints are not intended to be consumed as-is directly from this project**. The patterns provided will use local varibles (as defaults or required to be provided by you) that we recommend you change when deploying in your pre-production or testing environments.
 
-```bash
-scoop bucket add terraform-docs https://github.com/terraform-docs/scoop-bucket
-scoop install terraform-docs
-```
+## Patterns
 
-or [Chocolatey]:
+1. [Simple architecture](./patterns/1-simple_architecture/)
+2. [Multi-AWS Account](./patterns/2-multi_account/)
+3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
+4. Hybrid architectures (TBD)
 
-```bash
-choco install terraform-docs
-```
+## AWS Cloud WAN components and features
 
-Stable binaries are also available on the [releases] page. To install, download the
-binary for your platform from "Assets" and place this into your `$PATH`:
+[AWS Cloud WAN](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html) is a managed, intent-driven service for building and managing global networks across [AWS Regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/) and on-premises environments. Unlike traditional methods that require manual interconnection of multiple [AWS Transit Gateways](https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html) using regional route tables and static routing between Transit Gateway peering attachments, Cloud WAN automates networking including cross-region dynamic routing, network segmentation, and configuration management, streamlining global network operations.
 
-```bash
-curl -Lo ./terraform-docs.tar.gz https://github.com/terraform-docs/terraform-docs/releases/download/v0.17.0/terraform-docs-v0.17.0-$(uname)-amd64.tar.gz
-tar -xzf terraform-docs.tar.gz
-chmod +x terraform-docs
-mv terraform-docs /usr/local/bin/terraform-docs
-```
+With Cloud WAN, we have seen customers simplify networking complexities while enabling advanced routing, segmentation, and seamless integration with existing infrastructure. This project delves AWS Cloud WAN’s capabilities, configuration approaches, and advanced routing, helping you build and optimise global networking architectures.
 
-**NOTE:** Windows releases are in `ZIP` format.
+### Control Plane, AWS Network Manager, and Network Policy
 
-The latest version can be installed using `go install` or `go get`:
+Cloud WAN is managed within AWS Network Manager, providing centralized management and visualization of global networks. The control plane is deployed within the Oregon (us-west-2) region i.e. where service is managed from and the metadata is stored.
 
-```bash
-# go1.17+
-go install github.com/terraform-docs/terraform-docs@v0.17.0
-```
+The foundation of Cloud WAN is the [network policy](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-create-policy-version.html), written in a declarative language using JSON (JavaScript Object Notation) that defines all components of Cloud WAN, such as segments, routing, and how attachments map to segments. This policy-driven approach allows organizations to define their intent for access control and traffic routing, while Cloud WAN automates the underlying network configuration, ensuring scalability and consistency across Regions.
 
-```bash
-# go1.16
-GO111MODULE="on" go get github.com/terraform-docs/terraform-docs@v0.17.0
-```
+### Core Network Edge (CNE)
 
-**NOTE:** please use the latest Go to do this, minimum `go1.16` is required.
+The Core Network Edge (CNE) is a key architectural component of Cloud WAN, acting as a regional router similar to a Transit Gateway. While it appears as a single entity within a region, it is highly available and resilient behind the scenes. The CNE is a data plane construct and can be deployed in any region where Cloud WAN is supported.
 
-This will put `terraform-docs` in `$(go env GOPATH)/bin`. If you encounter the error
-`terraform-docs: command not found` after installation then you may need to either add
-that directory to your `$PATH` as shown [here] or do a manual installation by cloning
-the repo and run `make build` from the repository which will put `terraform-docs` in:
+A key distinction between CNEs and Transit Gateways is that CNEs automatically establish full-mesh peering with one another, leveraging dynamic routing (e-BGP) to exchange routing information. This enables seamless, resilient, and optimal routing across all attached networks. In contrast, Transit Gateways require manual peering and rely on static routing for inter-region connectivity. A CNE supports up to 100Gbps throughput.
 
-```bash
-$(go env GOPATH)/src/github.com/terraform-docs/terraform-docs/bin/$(uname | tr '[:upper:]' '[:lower:]')-amd64/terraform-docs
-```
+### Segments
 
-## Usage
+A segment functions as a global route table (thinking on Transit Gateway terms). In traditional networking terms, a segment can be compared to a Virtual Routing and Forwarding (VRF) domain. While segments are available in every region where a Core Network Edge exists, you can limit the segment to specific Regions. Important to mention that any supported attachments can only be attached to a segment if it exists within its local Region.
 
-### Running the binary directly
+How segments are defined depends entirely on customer requirements, but the most common patterns include:
 
-To run and generate documentation into README within a directory:
+1. Segmentation by **environment** (e.g., development, test, staging, production, hybrid)
+2. Segmentation by **Business Unit** (e.g. Org A, Org B, Org C)
+3. Segmentation by **continent** (e.g., North America, Latin America, Europe, Asia Pacific)
 
-```bash
-terraform-docs markdown table --output-file README.md --output-mode inject /path/to/module
-```
+Customers may also use a combination of these patterns or a different pattern altogether, but it is important to note that Cloud WAN supports a maximum of 40 segments.
 
-Check [`output`] configuration for more details and examples.
+By default, when an attachment is associated with a segment, it automatically propagates its prefixes to that segment, allowing intra-segment traffic by default. While segments share similarities with VRFs, there are key differences:
 
-### Using docker
+* Segments can contain Isolated or Non-Isolated attachments. Isolated attachments override the next-hop for a propagated prefix, routing traffic for inspection rather than direct forwarding. More details on this can be found in the [Service Insertion](#service-insertion) section. If you do not create a service insertion, the prefixes will not propagate into the segment, despite being attached to the segment.
+* Overlapping (identical) prefixes cannot be propagated into a segment. If attempted, Cloud WAN will only propagate the first prefix, following a *first one wins* rule.
 
-terraform-docs can be run as a container by mounting a directory with `.tf`
-files in it and run the following command:
+### Routing actions
 
-```bash
-docker run --rm --volume "$(pwd):/terraform-docs" -u $(id -u) quay.io/terraform-docs/terraform-docs:0.17.0 markdown /terraform-docs
-```
+#### Segment sharing
 
-If `output.file` is not enabled for this module, generated output can be redirected
-back to a file:
+A **share** action in Cloud WAN is the exchange (propagation) of routes between segments (in a 1:1 fashion or 1:many), without requiring inspection. Important to note that segments are non-transitive, i.e. you cannot route between two segments if a share action has not been created - only learned routes that are directly attached to the segment are exchanged.
 
-```bash
-docker run --rm --volume "$(pwd):/terraform-docs" -u $(id -u) quay.io/terraform-docs/terraform-docs:0.17.0 markdown /terraform-docs > doc.md
-```
+#### Service Insertion
 
-**NOTE:** Docker tag `latest` refers to _latest_ stable released version and `edge`
-refers to HEAD of `master` at any given point in time.
-
-### Using GitHub Actions
-
-To use terraform-docs GitHub Action, configure a YAML workflow file (e.g.
-`.github/workflows/documentation.yml`) with the following:
-
-```yaml
-name: Generate terraform docs
-on:
-  - pull_request
-
-jobs:
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        ref: ${{ github.event.pull_request.head.ref }}
-
-    - name: Render terraform docs and push changes back to PR
-      uses: terraform-docs/gh-actions@main
-      with:
-        working-dir: .
-        output-file: README.md
-        output-method: inject
-        git-push: "true"
-```
-
-Read more about [terraform-docs GitHub Action] and its configuration and
-examples.
-
-### pre-commit hook
-
-With pre-commit, you can ensure your Terraform module documentation is kept
-up-to-date each time you make a commit.
-
-First [install pre-commit] and then create or update a `.pre-commit-config.yaml`
-in the root of your Git repo with at least the following content:
-
-```yaml
-repos:
-  - repo: https://github.com/terraform-docs/terraform-docs
-    rev: "v0.17.0"
-    hooks:
-      - id: terraform-docs-go
-        args: ["markdown", "table", "--output-file", "README.md", "./mymodule/path"]
-```
-
-Then run:
-
-```bash
-pre-commit install
-pre-commit install-hooks
-```
-
-Further changes to your module's `.tf` files will cause an update to documentation
-when you make a commit.
-
-## Configuration
-
-terraform-docs can be configured with a yaml file. The default name of this file is
-`.terraform-docs.yml` and the path order for locating it is:
-
-1. root of module directory
-1. `.config/` folder at root of module directory
-1. current directory
-1. `.config/` folder at current directory
-1. `$HOME/.tfdocs.d/`
+The service insertion mechanism defines how inspection is performed, supporting:
 
-```yaml
-formatter: "" # this is required
+* Intra-segment traffic - for *isolated* segments.
+* Inter-segment traffic.
+* Egress traffic.
 
-version: ""
+To start defining Service Insertion we need to start by indicating how to include the firewalls in the network. The integration works the same as with Transit Gateway: by attaching an Inspection VPC to the network. However, there are some changes in how the inspection routing configuration works.
 
-header-from: main.tf
-footer-from: ""
+To start, Inspection VPCs are associated to [Network Function Groups](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFGs). A NFG acts as a container for attachments hosting security functions and can be thought of as a managed security segment. Like segments, NFGs are global constructs and can be associated with multiple Inspection VPCs, supporting cross-region inspection to ensure consistent security enforcement across a global network. You can have one or many Network Function Groups, depending on how your firewalls are grouped.
 
-recursive:
-  enabled: false
-  path: modules
+To allow inspection, you have two different actions to configure in Cloud WAN:
 
-sections:
-  hide: []
-  show: []
+* "send-via" for east-west traffic (intra or inter-segment) inspection.
+* "send-to" for egress traffic inspection.
 
-content: ""
+### Attachments
 
-output:
-  file: ""
-  mode: inject
-  template: |-
-    <!-- BEGIN_TF_DOCS -->
-    {{ .Content }}
-    <!-- END_TF_DOCS -->
+A Cloud WAN attachment is a connection between a network resource (such as a VPC, AWS Direct Connect gateway, SD-WAN Overlay, or a Site-to-Site VPN) and a CNE within AWS Cloud WAN. An attachment can only be associated with one segment. There are a number of different attachment types supported in Cloud WAN:
 
-output-values:
-  enabled: false
-  from: ""
+1. VPC – Connect a VPC to Cloud WAN, allowing instances within the VPC to communicate with other network segments.
+2. Site-to-Site VPN – Connect on-premises networks to Cloud WAN using an IPsec VPN tunnel.
+3. Direct Connect Gateway – Connect on-premise networks to Cloud WAN using an AWS Direct Connect.
+4. Transit Gateway Route Table – Connect an existing AWS Transit Gateway (TGW) to Cloud WAN for seamless integration.
+5. Connect - Connect to third-party SD-WAN appliances using high-performance attachments providing seamless connectivity.
+    1. GRE (Generic Routing Encapsulation).
+    2. Tunnel-less Connect (No Encapsulation).
 
-sort:
-  enabled: true
-  by: name
+**Note**: A Connect Attachment is used for overlay networking to integrate with SD-WAN appliances. However, it still requires an underlay (transport) VPC attachment.
 
-settings:
-  anchor: true
-  color: true
-  default: true
-  description: false
-  escape: true
-  hide-empty: false
-  html: true
-  indent: 2
-  lockfile: true
-  read-comments: true
-  required: true
-  sensitive: true
-  type: true
-```
+### Attachment Policies
 
-## Content Template
+Attachment Policies are rules within Cloud WAN that govern how attachments are associated with segments or NGFs in a core network. A number of attributes are supper such as tags, attachment type, AWS Account ID, or AWS Region. For NFG association, only tags are supported.
 
-Generated content can be customized further away with `content` in configuration.
-If the `content` is empty the default order of sections is used.
+By default, segments and NFGs will auto-accept attachment requests, but this can be disabled by enabling the *require acceptance* feature. This will ensure that when an attachment is created and associated with a segment/NFG, an administrator must approve the association. Until this is done, the attachment remains in a pending state and will not be able to access the core network. The *require acceptance* feature is recommended for segments that contain sensitive workloads, especially where isolated attachments are not being used.
 
-Compatible formatters for customized content are `asciidoc` and `markdown`. `content`
-will be ignored for other formatters.
+## FAQ
 
-`content` is a Go template with following additional variables:
+### I still see some patterns with a "TBD" description
 
-- `{{ .Header }}`
-- `{{ .Footer }}`
-- `{{ .Inputs }}`
-- `{{ .Modules }}`
-- `{{ .Outputs }}`
-- `{{ .Providers }}`
-- `{{ .Requirements }}`
-- `{{ .Resources }}`
+We have already an idea of the general structure of the blueprints we want to cover in this project. However, we have just started developing them and it will take some time until we have a v1 ready. Having *placeholders* allow us to provide you the patterns we have ready while we work on the rest.
 
-and following functions:
+In addition, if you have any feedback on the current patterns, or do you want us to work in new patterns, see [CONTRIBUTING](./CONTRIBUTING.md) for more information.
 
-- `{{ include "relative/path/to/file" }}`
+### What are the bandwidth and MTU supported in AWS Cloud WAN?
 
-These variables are the generated output of individual sections in the selected
-formatter. For example `{{ .Inputs }}` is Markdown Table representation of _inputs_
-when formatter is set to `markdown table`.
+For an updated information of quotas and limits in AWS Cloud WAN, please refer to the [documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-quotas.html).
 
-Note that sections visibility (i.e. `sections.show` and `sections.hide`) takes
-precedence over the `content`.
+## Authors
 
-Additionally there's also one extra special variable avaialble to the `content`:
+* Mevlit Mustafa, Sr. Network Specialist Solutions Architect, AWS
+* Pablo Sánchez Carmona, Sr. Network Specialist Solutions Architect, AWS
 
-- `{{ .Module }}`
+## Contributing
 
-As opposed to the other variables mentioned above, which are generated sections
-based on a selected formatter, the `{{ .Module }}` variable is just a `struct`
-representing a [Terraform module].
-
-````yaml
-content: |-
-  Any arbitrary text can be placed anywhere in the content
-
-  {{ .Header }}
-
-  and even in between sections
-
-  {{ .Providers }}
-
-  and they don't even need to be in the default order
-
-  {{ .Outputs }}
-
-  include any relative files
-
-  {{ include "relative/path/to/file" }}
-
-  {{ .Inputs }}
-
-  # Examples
-
-  ```hcl
-  {{ include "examples/foo/main.tf" }}
-  ```
-
-  ## Resources
-
-  {{ range .Module.Resources }}
-  - {{ .GetMode }}.{{ .Spec }} ({{ .Position.Filename }}#{{ .Position.Line }})
-  {{- end }}
-````
-
-## Build on top of terraform-docs
-
-terraform-docs primary use-case is to be utilized as a standalone binary, but
-some parts of it is also available publicly and can be imported in your project
-as a library.
-
-```go
-import (
-    "github.com/terraform-docs/terraform-docs/format"
-    "github.com/terraform-docs/terraform-docs/print"
-    "github.com/terraform-docs/terraform-docs/terraform"
-)
-
-// buildTerraformDocs for module root `path` and provided content `tmpl`.
-func buildTerraformDocs(path string, tmpl string) (string, error) {
-    config := print.DefaultConfig()
-    config.ModuleRoot = path // module root path (can be relative or absolute)
-
-    module, err := terraform.LoadWithOptions(config)
-    if err != nil {
-        return "", err
-    }
-
-    // Generate in Markdown Table format
-    formatter := format.NewMarkdownTable(config)
-
-    if err := formatter.Generate(module); err != nil {
-        return "", err
-    }
-
-    // // Note: if you don't intend to provide additional template for the generated
-    // // content, or the target format doesn't provide templating (e.g. json, yaml,
-    // // xml, or toml) you can use `Content()` function instead of `Render()`.
-    // // `Content()` returns all the sections combined with predefined order.
-    // return formatter.Content(), nil
-
-    return formatter.Render(tmpl)
-}
-```
-
-## Plugin
-
-Generated output can be heavily customized with [`content`], but if using that
-is not enough for your use-case, you can write your own plugin.
-
-In order to install a plugin the following steps are needed:
-
-- download the plugin and place it in `~/.tfdocs.d/plugins` (or `./.tfdocs.d/plugins`)
-- make sure the plugin file name is `tfdocs-format-<NAME>`
-- modify [`formatter`] of `.terraform-docs.yml` file to be `<NAME>`
-
-**Important notes:**
-
-- if the plugin file name is different than the example above, terraform-docs won't
-be able to to pick it up nor register it properly
-- you can only use plugin thorough `.terraform-docs.yml` file and it cannot be used
-with CLI arguments
-
-To create a new plugin create a new repository called `tfdocs-format-<NAME>` with
-following `main.go`:
-
-```go
-package main
-
-import (
-    _ "embed" //nolint
-
-    "github.com/terraform-docs/terraform-docs/plugin"
-    "github.com/terraform-docs/terraform-docs/print"
-    "github.com/terraform-docs/terraform-docs/template"
-    "github.com/terraform-docs/terraform-docs/terraform"
-)
-
-func main() {
-    plugin.Serve(&plugin.ServeOpts{
-        Name:    "<NAME>",
-        Version: "0.1.0",
-        Printer: printerFunc,
-    })
-}
-
-//go:embed sections.tmpl
-var tplCustom []byte
-
-// printerFunc the function being executed by the plugin client.
-func printerFunc(config *print.Config, module *terraform.Module) (string, error) {
-    tpl := template.New(config,
-        &template.Item{Name: "custom", Text: string(tplCustom)},
-    )
-
-    rendered, err := tpl.Render("custom", module)
-    if err != nil {
-        return "", err
-    }
-
-    return rendered, nil
-}
-```
-
-Please refer to [tfdocs-format-template] for more details. You can create a new
-repository from it by clicking on `Use this template` button.
-
-## Documentation
-
-- **Users**
-  - Read the [User Guide] to learn how to use terraform-docs
-  - Read the [Formats Guide] to learn about different output formats of terraform-docs
-  - Refer to [Config File Reference] for all the available configuration options
-- **Developers**
-  - Read [Contributing Guide] before submitting a pull request
-
-Visit [our website] for all documentation.
-
-## Community
-
-- Discuss terraform-docs on [Slack]
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## License
 
-MIT License - Copyright (c) 2021 The terraform-docs Authors.
-
-[Chocolatey]: https://www.chocolatey.org
-[Config File Reference]: https://terraform-docs.io/user-guide/configuration/
-[`content`]: https://terraform-docs.io/user-guide/configuration/content/
-[Contributing Guide]: CONTRIBUTING.md
-[Formats Guide]: https://terraform-docs.io/reference/terraform-docs/
-[`formatter`]: https://terraform-docs.io/user-guide/configuration/formatter/
-[here]: https://golang.org/doc/code.html#GOPATH
-[Homebrew]: https://brew.sh
-[install pre-commit]: https://pre-commit.com/#install
-[`output`]: https://terraform-docs.io/user-guide/configuration/output/
-[releases]: https://github.com/terraform-docs/terraform-docs/releases
-[Scoop]: https://scoop.sh/
-[Slack]: https://slack.terraform-docs.io/
-[terraform-docs GitHub Action]: https://github.com/terraform-docs/gh-actions
-[Terraform module]: https://pkg.go.dev/github.com/terraform-docs/terraform-docs/terraform#Module
-[tfdocs-format-template]: https://github.com/terraform-docs/tfdocs-format-template
-[our website]: https://terraform-docs.io/
-[User Guide]: https://terraform-docs.io/user-guide/introduction/
+This library is licensed under the MIT-0 License. See the LICENSE file.

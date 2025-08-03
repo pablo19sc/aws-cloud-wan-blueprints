@@ -1,5 +1,4 @@
-
-## AWS Cloud WAN Blueprints - Simple architecture
+# AWS Cloud WAN Blueprints - Simple architecture
 
 Within this section of the blueprints, we want to provide a simple example of AWS Cloud WAN, so you can understand its basic concepts: segments, segment actions, and attachment policies. The use case covered builds the following:
 
