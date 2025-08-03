@@ -635,7 +635,7 @@ Resources:
           - "aws:alert_strict"
         StatefulRuleGroupReferences:
           - Priority: 10
-            ResourceArn: !GetAtt NetworkFirewallStatefulAllowDomains.RuleGroupArn
+            ResourceArn: !GetAtt NetworkFirewallStatefulAllowICMP.RuleGroupArn
       FirewallPolicyName: !Join
         - "-"
         - - "firewall-policy"
@@ -674,14 +674,14 @@ Resources:
                   Actions:
                     - "aws:drop"
 
-  # Stateful Rule Group - ICMP Alert
-  NetworkFirewallStatefulAllowDomains:
+  # Stateful Rule Group - ICMP Allow/Alert
+  NetworkFirewallStatefulAllowICMP:
     Type: AWS::NetworkFirewall::RuleGroup
     Properties:
       Capacity: 100
       RuleGroupName: !Join
         - "-"
-        - - "allow-domain"
+        - - "allow-icmp"
           - !Ref AWS::StackName
       Description: Allowing domains
       Type: STATEFUL
