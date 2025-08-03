@@ -12,7 +12,8 @@ repos:
           (?x)^(
             .*\.terraform/.*|
             patterns/tf_modules/compute/.*|
-            patterns/tf_modules/firewall_policy/.*
+            patterns/tf_modules/firewall_policy/.*|
+            [^/]*\.(tf|header\.md)$
           )$
         args:
           - --hook-config=--path-to-file=.terraform-docs.yaml

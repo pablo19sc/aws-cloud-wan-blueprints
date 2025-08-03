@@ -1,5 +1,4 @@
-
-## AWS Cloud WAN Blueprints - Traffic Inspection architectures (Centralized Outbound)
+# AWS Cloud WAN Blueprints - Traffic Inspection architectures (Centralized Outbound)
 
 This example shows a centralized egress and inspection architecture. The core network policy builds the following network:
 
