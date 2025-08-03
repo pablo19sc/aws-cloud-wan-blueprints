@@ -717,7 +717,7 @@ Resources:
                   Actions:
                     - "aws:drop"
 
-  # Stateful Rule Group - ICMP Alert
+  # Stateful Rule Group - Allow domains
   NetworkFirewallStatefulAllowDomains:
     Type: AWS::NetworkFirewall::RuleGroup
     Properties:

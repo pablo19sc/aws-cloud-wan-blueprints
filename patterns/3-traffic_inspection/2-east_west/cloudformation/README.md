@@ -1,16 +1,26 @@
-# East/West traffic (Dual-hop inspection)
+# AWS Cloud WAN Blueprints - Traffic Inspection architectures (East-West)
 
 ![East-West](../../../../images/east_west_dualhop.png)
+
+![East-West](../../../../images/east_west_singlehop.png)
 
 ## Prerequisites
 - An AWS account with an IAM user with the appropriate permissions
 
 ## Usage
 - Clone the repository
-- (Optional) Edit the VPC CIDRs in the `east_west.yaml` file if you want to test with other values.
-- You will find three files creating Core Network policy documents.
-    - `base_policy.yaml` is used to create the resources without the Service Insertion actions. This is done because a Service Insertion action cannot reference a Network Function Group that has to attachments associated.
-    - `core_network.yaml` contains the final format of the policy document, with the Service Insertion actions.
+
+```bash
+git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+```
+
+- Move to the corresponding folder
+
+```bash
+cd patterns/3-traffic_inspection/1-centralized_outbound/cloudformation
+```
+
+- (Optional) Edit the VPC CIDRs in the `workloads.yaml` file if you want to test with other values.
 - Deploy the resources:
     - Use `make deploy-dualhop` to test send-via dual-hop mode.
     - Use `make deploy-singlehop` to test send-via single-hop mode.
