@@ -3,6 +3,14 @@
 
 # --- patterns/tf_modules/firewall_policy/main.tf ---
 
+locals {
+  stateful_rule_groups = {
+    east-west = [aws_networkfirewall_rule_group.allow_domains[0].arn]
+    north-south = [aws_networkfirewall_rule_group.allow_icmp[0].arn]
+    all = [aws_networkfirewall_rule_group.allow_domains[0].arn, aws_networkfirewall_rule_group.allow_icmp[0].arn]
+  }
+}
+
 resource "aws_networkfirewall_firewall_policy" "anfw_policy" {
   name = "firewall-policy-${var.identifier}"
 
@@ -21,9 +29,13 @@ resource "aws_networkfirewall_firewall_policy" "anfw_policy" {
       rule_order = "STRICT_ORDER"
     }
     stateful_default_actions = ["aws:drop_strict", "aws:alert_strict"]
-    stateful_rule_group_reference {
-      priority     = 10
-      resource_arn = contains(["north-south"], var.traffic_flow) ? aws_networkfirewall_rule_group.allow_domains[0].arn : aws_networkfirewall_rule_group.allow_icmp[0].arn
+
+    dynamic stateful_rule_group_reference {
+      for_each = local.stateful_rule_groups[var.traffic_flow]
+      content {
+        resource_arn = stateful_rule_group_reference.value
+        priority     = 10 + stateful_rule_group_reference.key
+      }
     }
   }
 }
@@ -83,7 +95,7 @@ resource "aws_networkfirewall_rule_group" "drop_remote" {
 
 # Stateful Rule Group - Allowing access to .amazon.com (HTTPS)
 resource "aws_networkfirewall_rule_group" "allow_domains" {
-  count = contains(["north-south"], var.traffic_flow) ? 1 : 0
+  count = contains(["north-south", "all"], var.traffic_flow) ? 1 : 0
 
   capacity = 100
   name     = "allow-domains-${var.identifier}"
@@ -103,7 +115,7 @@ resource "aws_networkfirewall_rule_group" "allow_domains" {
 
 # Stateful Rule Group - Allowing ICMP traffic
 resource "aws_networkfirewall_rule_group" "allow_icmp" {
-  count = contains(["east-west"], var.traffic_flow) ? 1 : 0
+  count = contains(["east-west", "all"], var.traffic_flow) ? 1 : 0
 
   capacity = 100
   name     = "allow-icmp-${var.identifier}"
