@@ -5,9 +5,9 @@
 
 locals {
   stateful_rule_groups = {
-    east-west = [aws_networkfirewall_rule_group.allow_domains[0].arn]
+    east-west   = [aws_networkfirewall_rule_group.allow_domains[0].arn]
     north-south = [aws_networkfirewall_rule_group.allow_icmp[0].arn]
-    all = [aws_networkfirewall_rule_group.allow_domains[0].arn, aws_networkfirewall_rule_group.allow_icmp[0].arn]
+    all         = [aws_networkfirewall_rule_group.allow_domains[0].arn, aws_networkfirewall_rule_group.allow_icmp[0].arn]
   }
 }
 
@@ -30,7 +30,7 @@ resource "aws_networkfirewall_firewall_policy" "anfw_policy" {
     }
     stateful_default_actions = ["aws:drop_strict", "aws:alert_strict"]
 
-    dynamic stateful_rule_group_reference {
+    dynamic "stateful_rule_group_reference" {
       for_each = local.stateful_rule_groups[var.traffic_flow]
       content {
         resource_arn = stateful_rule_group_reference.value
