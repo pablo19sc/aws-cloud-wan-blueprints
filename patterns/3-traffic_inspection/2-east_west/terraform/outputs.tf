@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- patterns/3-traffic_inspection/2-east_west/terraform/cloudwan_policy.tf ---
+# --- patterns/3-traffic_inspection/2-east_west/terraform/outputs.tf ---
 
 output "cloud_wan" {
   description = "AWS Cloud WAN resources."

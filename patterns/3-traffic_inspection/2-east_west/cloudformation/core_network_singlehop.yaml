@@ -60,7 +60,7 @@ Resources:
             via:
               network-function-groups:
                 - inspectionVpcs
-              with-edge-override:
+              with-edge-overrides:
                 - edge-sets:
                     - - eu-west-1
                       - us-east-1
