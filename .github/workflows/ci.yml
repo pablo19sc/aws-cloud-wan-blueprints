@@ -113,7 +113,19 @@ jobs:
           
           for dir in $TERRAFORM_DIRS; do
             echo "Processing $dir..."
-            terraform-docs markdown table --output-file README.md --output-mode inject "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
+            # Validate we're not in root directory
+            if [ "$dir" = "." ] || [ "$dir" = "./" ]; then
+              echo "❌ ERROR: Attempted to run terraform-docs on root directory! Skipping."
+              continue
+            fi
+            
+            # Run terraform-docs with explicit parameters (not using global config)
+            terraform-docs markdown table \
+              --header-from "$dir/.header.md" \
+              --output-file "$dir/README.md" \
+              --output-mode inject \
+              --sort-by required \
+              "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
           done
         else
           echo "No terraform directories with .header.md found"

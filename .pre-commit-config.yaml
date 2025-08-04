@@ -6,16 +6,6 @@ repos:
         files: \.tf$
         args:
           - --args=-recursive
-      - id: terraform_docs
-        files: .*/terraform/.*\.(tf|header\.md)$
-        exclude: |
-          (?x)^(
-            .*\.terraform/.*|
-            patterns/tf_modules/compute/.*|
-            patterns/tf_modules/firewall_policy/.*
-          )$
-        args:
-          - --hook-config=--path-to-file=.terraform-docs.yaml
       - id: terraform_validate
         files: \.tf$
         args:
