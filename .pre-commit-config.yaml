@@ -7,13 +7,12 @@ repos:
         args:
           - --args=-recursive
       - id: terraform_docs
-        files: (\.tf|\.header\.md)$
+        files: .*/terraform/.*\.(tf|header\.md)$
         exclude: |
           (?x)^(
             .*\.terraform/.*|
             patterns/tf_modules/compute/.*|
-            patterns/tf_modules/firewall_policy/.*|
-            [^/]*\.(tf|header\.md)$
+            patterns/tf_modules/firewall_policy/.*
           )$
         args:
           - --hook-config=--path-to-file=.terraform-docs.yaml
