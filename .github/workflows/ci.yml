@@ -80,9 +80,12 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
+        # Add all files except workflow files
+        git add -A
+        git reset -- .github/workflows/
+        
         # Check if there are changes to commit
-        if ! git diff --quiet; then
-          git add -A
+        if ! git diff --cached --quiet; then
           git commit -m "Auto-fix: Update terraform documentation and formatting
           
           - terraform-docs: Update README.md files with latest variable/output documentation
@@ -120,9 +123,12 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
+        # Add all files except workflow files
+        git add -A
+        git reset -- .github/workflows/
+        
         # Check if there are changes to commit
-        if ! git diff --quiet; then
-          git add -A
+        if ! git diff --cached --quiet; then
           git commit -m "Auto-fix: Code quality improvements
           
           - end-of-file-fixer: Ensure files end with newline
