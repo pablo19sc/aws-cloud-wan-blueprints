@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider_aws) | 6.4.0 |
+| <a name="provider_aws"></a> [aws](#provider_aws) | >= 5.67.0 |
 
 ## Modules
 
@@ -34,7 +34,7 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_spoke_account"></a> [spoke_account](#input_spoke_account) | Spoke AWS Account. | `string` | n/a | yes |
-| <a name="input_aws_regions"></a> [aws_regions](#input_aws_regions) | AWS Regions to create the environment. | `map(string)` | <pre>{<br/>  "ireland": "eu-west-1",<br/>  "nvirginia": "us-east-1"<br/>}</pre> | no |
+| <a name="input_aws_regions"></a> [aws_regions](#input_aws_regions) | AWS Regions to create the environment. | `map(string)` | <pre>{<br>  "ireland": "eu-west-1",<br>  "nvirginia": "us-east-1"<br>}</pre> | no |
 | <a name="input_identifier"></a> [identifier](#input_identifier) | Project Identifier, used as identifer when creating resources. | `string` | `"multi-account"` | no |
 
 ## Outputs
