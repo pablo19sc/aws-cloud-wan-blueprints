@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider_aws.awsnvirginia) | >= 5.67.0 |
+| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider_aws.awsnvirginia) | 6.4.0 |
 
 ## Modules
 
@@ -34,10 +34,10 @@
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_resource_share_arn"></a> [resource_share_arn](#input_resource_share_arn) | AWS RAM resource share (from Networking Account). | `string` | n/a | yes |
-| <a name="input_aws_regions"></a> [aws_regions](#input_aws_regions) | AWS Regions to create the environment. | `map(string)` | <pre>{<br>  "ireland": "eu-west-1",<br>  "nvirginia": "us-east-1"<br>}</pre> | no |
+| <a name="input_aws_regions"></a> [aws_regions](#input_aws_regions) | AWS Regions to create the environment. | `map(string)` | <pre>{<br/>  "ireland": "eu-west-1",<br/>  "nvirginia": "us-east-1"<br/>}</pre> | no |
 | <a name="input_identifier"></a> [identifier](#input_identifier) | Project Identifier, used as identifer when creating resources. | `string` | `"multi-account"` | no |
-| <a name="input_ireland_spoke_vpcs"></a> [ireland_spoke_vpcs](#input_ireland_spoke_vpcs) | Information about the VPCs to create in eu-west-1. | `any` | <pre>{<br>  "dev": {<br>    "cidr_block": "10.0.1.0/24",<br>    "cnetwork_subnet_netmask": 28,<br>    "endpoint_subnet_netmask": 28,<br>    "instance_type": "t2.micro",<br>    "name": "dev-eu-west-1",<br>    "number_azs": 2,<br>    "segment": "development",<br>    "workload_subnet_netmask": 28<br>  },<br>  "prod": {<br>    "cidr_block": "10.0.0.0/24",<br>    "cnetwork_subnet_netmask": 28,<br>    "endpoint_subnet_netmask": 28,<br>    "instance_type": "t2.micro",<br>    "name": "prod-eu-west-1",<br>    "number_azs": 2,<br>    "segment": "production",<br>    "workload_subnet_netmask": 28<br>  }<br>}</pre> | no |
-| <a name="input_nvirginia_spoke_vpcs"></a> [nvirginia_spoke_vpcs](#input_nvirginia_spoke_vpcs) | Information about the VPCs to create in us-east-1. | `any` | <pre>{<br>  "dev": {<br>    "cidr_block": "10.10.1.0/24",<br>    "cnetwork_subnet_netmask": 28,<br>    "endpoint_subnet_netmask": 28,<br>    "instance_type": "t2.micro",<br>    "name": "dev-us-east-1",<br>    "number_azs": 2,<br>    "segment": "development",<br>    "workload_subnet_netmask": 28<br>  },<br>  "prod": {<br>    "cidr_block": "10.10.0.0/24",<br>    "cnetwork_subnet_netmask": 28,<br>    "endpoint_subnet_netmask": 28,<br>    "instance_type": "t2.micro",<br>    "name": "prod-us-east-1",<br>    "number_azs": 2,<br>    "segment": "production",<br>    "workload_subnet_netmask": 28<br>  }<br>}</pre> | no |
+| <a name="input_ireland_spoke_vpcs"></a> [ireland_spoke_vpcs](#input_ireland_spoke_vpcs) | Information about the VPCs to create in eu-west-1. | `any` | <pre>{<br/>  "dev": {<br/>    "cidr_block": "10.0.1.0/24",<br/>    "cnetwork_subnet_netmask": 28,<br/>    "endpoint_subnet_netmask": 28,<br/>    "instance_type": "t2.micro",<br/>    "name": "dev-eu-west-1",<br/>    "number_azs": 2,<br/>    "segment": "development",<br/>    "workload_subnet_netmask": 28<br/>  },<br/>  "prod": {<br/>    "cidr_block": "10.0.0.0/24",<br/>    "cnetwork_subnet_netmask": 28,<br/>    "endpoint_subnet_netmask": 28,<br/>    "instance_type": "t2.micro",<br/>    "name": "prod-eu-west-1",<br/>    "number_azs": 2,<br/>    "segment": "production",<br/>    "workload_subnet_netmask": 28<br/>  }<br/>}</pre> | no |
+| <a name="input_nvirginia_spoke_vpcs"></a> [nvirginia_spoke_vpcs](#input_nvirginia_spoke_vpcs) | Information about the VPCs to create in us-east-1. | `any` | <pre>{<br/>  "dev": {<br/>    "cidr_block": "10.10.1.0/24",<br/>    "cnetwork_subnet_netmask": 28,<br/>    "endpoint_subnet_netmask": 28,<br/>    "instance_type": "t2.micro",<br/>    "name": "dev-us-east-1",<br/>    "number_azs": 2,<br/>    "segment": "development",<br/>    "workload_subnet_netmask": 28<br/>  },<br/>  "prod": {<br/>    "cidr_block": "10.10.0.0/24",<br/>    "cnetwork_subnet_netmask": 28,<br/>    "endpoint_subnet_netmask": 28,<br/>    "instance_type": "t2.micro",<br/>    "name": "prod-us-east-1",<br/>    "number_azs": 2,<br/>    "segment": "production",<br/>    "workload_subnet_netmask": 28<br/>  }<br/>}</pre> | no |
 
 ## Outputs
 

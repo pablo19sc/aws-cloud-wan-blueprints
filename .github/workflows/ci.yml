@@ -125,6 +125,7 @@ jobs:
               --output-file "README.md" \
               --output-mode inject \
               --sort-by required \
+              --escape=false \
               .) || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
           done
         else
