@@ -5,7 +5,7 @@ settings:
   anchor: true
   color: true
   default: true
-  escape: true
+  escape: false
   html: true
   indent: 2
   required: true
