@@ -120,12 +120,12 @@ jobs:
             fi
             
             # Run terraform-docs with explicit parameters (not using global config)
-            terraform-docs markdown table \
-              --header-from "$dir/.header.md" \
-              --output-file "$dir/README.md" \
+            (cd "$dir" && terraform-docs markdown table \
+              --header-from ".header.md" \
+              --output-file "README.md" \
               --output-mode inject \
               --sort-by required \
-              "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
+              .) || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
           done
         else
           echo "No terraform directories with .header.md found"
