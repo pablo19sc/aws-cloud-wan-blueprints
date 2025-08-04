@@ -90,8 +90,22 @@ jobs:
         # Run terraform_fmt on all files
         pre-commit run terraform_fmt --all-files || echo "terraform_fmt_failed=true" >> $GITHUB_OUTPUT
         
-        # Run terraform_docs only on terraform directories to avoid processing root
-        TERRAFORM_DIRS=$(find . -name "terraform" -type d | grep -v "\.terraform" | grep -E "patterns/.*/terraform$")
+        # Find all directories that contain .tf files and have .header.md
+        TERRAFORM_DIRS=""
+        
+        # Find directories named 'terraform' that have .tf files directly
+        for dir in $(find . -name "terraform" -type d | grep -v "\.terraform" | grep -E "patterns/.*/terraform$"); do
+          if [ -f "$dir/.header.md" ] && [ -n "$(find "$dir" -maxdepth 1 -name "*.tf" -type f)" ]; then
+            TERRAFORM_DIRS="$TERRAFORM_DIRS $dir"
+          fi
+        done
+        
+        # Also check subdirectories of terraform directories (like networking, spoke)
+        for dir in $(find . -path "*/terraform/*" -type d | grep -v "\.terraform"); do
+          if [ -f "$dir/.header.md" ] && [ -n "$(find "$dir" -maxdepth 1 -name "*.tf" -type f)" ]; then
+            TERRAFORM_DIRS="$TERRAFORM_DIRS $dir"
+          fi
+        done
         
         if [ ! -z "$TERRAFORM_DIRS" ]; then
           echo "Running terraform-docs on directories:"
@@ -99,14 +113,10 @@ jobs:
           
           for dir in $TERRAFORM_DIRS; do
             echo "Processing $dir..."
-            if [ -f "$dir/.header.md" ] && [ -n "$(find "$dir" -name "*.tf" -type f)" ]; then
-              terraform-docs markdown table --output-file README.md --output-mode inject "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
-            else
-              echo "Skipping $dir (no .header.md or no .tf files)"
-            fi
+            terraform-docs markdown table --output-file README.md --output-mode inject "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
           done
         else
-          echo "No terraform directories found"
+          echo "No terraform directories with .header.md found"
         fi
 
     - name: Auto-commit documentation and formatting fixes
