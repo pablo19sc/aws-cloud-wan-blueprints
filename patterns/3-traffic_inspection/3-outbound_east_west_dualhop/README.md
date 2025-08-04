@@ -6,7 +6,7 @@ This example shows a centralized east-west inspection architecture. The core net
 * 2 [network function groups](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection and outbound VPCs. Core Network's policy includes the following attachment policy rules:
     * The tag *inspection=true* will associate a VPC to the *inspectionVpcs* NFG..
     * The tag *outbound=true* will associate a VPC to the *outboundVpcs* NFG..
-* **Service Insertion rules**: 
+* **Service Insertion rules**:
     * One [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#cloudwan-policy-service-insertion-modes) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments. This example makes use of the **dual-hop** mode - traffic traversing two AWS Regions is inspected in both of them.
     * In each routing domain's segment, a [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#cloudwan-policy-service-insertion-modes) action is created to send the default traffic (0.0.0.0/0 and ::/0) to the outbound VPCs.
 

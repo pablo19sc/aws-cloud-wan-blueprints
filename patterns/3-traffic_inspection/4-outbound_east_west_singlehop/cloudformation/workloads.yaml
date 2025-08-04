@@ -513,7 +513,7 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InspectionIGW
-      VpcId: !Ref InspectionVPC            
+      VpcId: !Ref InspectionVPC
 
   # For::Each iteration: per subnet type (Public, Endpoint, CWAN) and AZ (2 AZs)
   # Resources to create: 6 subnets, 6 route tables, 6 route table associations - obtaining AZ affinity
@@ -638,7 +638,7 @@ Resources:
       SubnetAz: !GetAtt InspectionEndpointSubnetb.AvailabilityZone
       DestinationCidr: "0.0.0.0/0"
       RouteTableId: !Ref InspectionCWANRouteTableb
-  
+
   # VPC route - 10.0.0.0/8 route from Public subnet to firewall endpoints (Custom resource)
   RoutePublicToFirewalla:
     DependsOn:
@@ -661,7 +661,7 @@ Resources:
       SubnetAz: !GetAtt InspectionEndpointSubnetb.AvailabilityZone
       DestinationCidr: 10.0.0.0/8
       RouteTableId: !Ref InspectionPublicRouteTableb
-  
+
   # AWS Cloud WAN attachment
   InspectionCWANAttachment:
     Type: AWS::NetworkManager::VpcAttachment
@@ -786,7 +786,7 @@ Resources:
           RulesString: |-
             alert icmp any any -> any any (msg: "Alerting traffic passing through firewall"; sid:1; rev:1;)
             pass icmp any any -> any any (msg: "Allowing ICMP packets"; sid:2; rev:1;)
-  
+
   # Stateful Rule Group - Allow domains
   NetworkFirewallStatefulAllowDomains:
     Type: AWS::NetworkFirewall::RuleGroup
@@ -805,7 +805,7 @@ Resources:
           RulesString: |-
             pass tcp any any <> $EXTERNAL_NET 443 (msg:"Allowing TCP in port 443"; flow:not_established; sid:892123; rev:1;)
             pass tls any any -> $EXTERNAL_NET 443 (tls.sni; dotprefix; content:".amazon.com"; endswith; msg:"Allowing .amazon.com HTTPS requests"; sid:892125; rev:1;)
-  
+
   # ---------- CUSTOM RESOURCE: VPC routes to Network Firewall (Inspection & Outbound VPCs) ----------
   # Lambda functions to create routes to Firewall endpoints
   RouteFunctionRole:
