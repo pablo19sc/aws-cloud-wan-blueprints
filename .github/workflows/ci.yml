@@ -87,9 +87,27 @@ jobs:
       id: docs-fmt
       continue-on-error: true
       run: |
-        # Run only terraform_docs and terraform_fmt
-        pre-commit run terraform_docs --all-files || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
+        # Run terraform_fmt on all files
         pre-commit run terraform_fmt --all-files || echo "terraform_fmt_failed=true" >> $GITHUB_OUTPUT
+        
+        # Run terraform_docs only on terraform directories to avoid processing root
+        TERRAFORM_DIRS=$(find . -name "terraform" -type d | grep -v "\.terraform" | grep -E "patterns/.*/terraform$")
+        
+        if [ ! -z "$TERRAFORM_DIRS" ]; then
+          echo "Running terraform-docs on directories:"
+          echo "$TERRAFORM_DIRS"
+          
+          for dir in $TERRAFORM_DIRS; do
+            echo "Processing $dir..."
+            if [ -f "$dir/.header.md" ] && [ -n "$(find "$dir" -name "*.tf" -type f)" ]; then
+              terraform-docs markdown table --output-file README.md --output-mode inject "$dir" || echo "terraform_docs_failed=true" >> $GITHUB_OUTPUT
+            else
+              echo "Skipping $dir (no .header.md or no .tf files)"
+            fi
+          done
+        else
+          echo "No terraform directories found"
+        fi
 
     - name: Auto-commit documentation and formatting fixes
       if: steps.docs-fmt.outputs.terraform_docs_failed == 'true' || steps.docs-fmt.outputs.terraform_fmt_failed == 'true'
