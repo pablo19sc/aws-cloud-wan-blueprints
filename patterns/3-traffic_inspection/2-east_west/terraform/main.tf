@@ -6,7 +6,7 @@
 # ---------- AWS CLOUD WAN RESOURCES ----------
 # Global Network
 resource "awscc_networkmanager_global_network" "global_network" {
-  description = "example"
+  description = "Global Network - ${var.identifier}"
 
   tags = [{
     key   = "Name"

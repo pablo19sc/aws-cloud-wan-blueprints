@@ -8,7 +8,7 @@
 resource "awscc_networkmanager_global_network" "global_network" {
   provider = awscc.awsccoregon
 
-  description = "example"
+  description = "Global Network - ${var.identifier}"
 
   tags = [{
     key   = "Name"
