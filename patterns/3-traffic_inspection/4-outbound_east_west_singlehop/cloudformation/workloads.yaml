@@ -513,7 +513,7 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       InternetGatewayId: !Ref InspectionIGW
-      VpcId: !Ref InspectionVPC
+      VpcId: !Ref InspectionVPC        
 
   # For::Each iteration: per subnet type (Public, Endpoint, CWAN) and AZ (2 AZs)
   # Resources to create: 6 subnets, 6 route tables, 6 route table associations - obtaining AZ affinity
