@@ -123,7 +123,7 @@ The Core Network's policy creates the following resources:
 * 4 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html):
   * 2 per routing domain - *production* and *development*. VPCs will be associated to these segments using an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*.
   * 2 segments for IPv4 (*ipv4only*) and IPv6 (*ipv6*) only routes - both *production* and *development* routes will be shared.
-* 2 [routing policies](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) filtering either any IPv4 (0.0.0.0/0) or IPv6 (::/0) CIDR blocks. These routing policies are configured as `outbound` - this is important as we want only the filtering to happen from *production* or *development* to the other segments (and not the other way around).
+* 2 [routing policies](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) filtering either any IPv4 (0.0.0.0/0) or IPv6 (::/0) CIDR blocks. These routing policies are configured as `inbound` - this is important as we want only the filtering to happen from *production* or *development* to the other segments (and not the other way around).
 * 4 [share segment actions](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-actions-routes.html).
   * Between *ipv4only* and *production* / *development* - filtering any IPv6 route.
   * Between *ipv6only* and *production* / *development* - filtering any IPv4 route.
