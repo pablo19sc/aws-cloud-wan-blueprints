@@ -38,7 +38,8 @@ These blueprints have been designed to be consumed in the following manners:
 1. [Simple architecture](./patterns/1-simple_architecture/)
 2. [Multi-AWS Account](./patterns/2-multi_account/)
 3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
-4. Hybrid architectures (TBD)
+4. [Routing policies](./patterns/4-routing_policies/)
+5. Hybrid architectures (TBD)
 
 ## AWS Cloud WAN components and features
 
@@ -98,6 +99,21 @@ To allow inspection, you have two different actions to configure in Cloud WAN:
 * "send-via" for east-west traffic (intra or inter-segment) inspection.
 * "send-to" for egress traffic inspection.
 
+#### Routing policies
+
+Routing Policies in Cloud WAN provide customers fine-grained routing controls to optimize route management and customize network routing behavior. A routing policy is a set of rules that gives you precise control over route propagations in your core network allowing you flexible routes management, optimized performance and greater security by controlling your routing and reachability in your global network. Using this feature, you can perform advanced routing techniques such as:
+
+* **Route filtering**: filter (drop) routes from incoming and outgoing route propagations over Cloud WAN attachments. You can set advanced routing policy rules to match one or more prefixes, prefix lists or BGP communities and drop those routes from inbound or outbound route propagations on an attachment. You can also apply these route filtering rules for routes propagated across segments and across regions on the core network (CNE-to-CNE) peering mesh.
+* **Route summarization** summarize or aggregate routes outbound on Cloud WAN attachments by specifying the desired summary route. You can set an outbound route policy with rules to match on prefixes or prefix lists and specify a summary route to propagate.
+* **Path preferences** set path preferences to influence incoming and outgoing traffic paths between your core network and external networks. You can set path preferences by modifying BGP attributes such as Local Preference, AS-PATHs and MED on inbound and outbound route propagations.
+* **BGP communities**: transitively pass BGP communities in outbound route updates, match on BGP communities that are part of inbound route updates, and perform actions such as route filtering, setting path preference attributes or adding and removing BGP communities in outbound route updates.
+
+Furthermore, this feature also provides enhanced visibility into the routing databases to allow rapid troubleshooting of network issues in complex multi-path environments. 
+
+Routing Policies are supported on all AWS Cloud WAN attachment types, including AWS Site-to-Site VPN, AWS Direct Connect, Connect attachments, peering attachments (Transit Gateway route table), and VPC attachments, as well as on routes propagated across segments and Regions (CNE-to-CNE). Note that route summarization and BGP attribute modification are supported only on BGP-capable attachments (Site-to-Site VPN, Direct Connect, Connect, and peering—as well as on inter-segment and inter-Region (CNE-to-CNE) propagated routes). For VPC attachments, support is limited to route filtering rules (“allow” or “drop” actions) for inbound route propagation from the VPC to the core network. BGP communities are supported on Site-to-site VPN and Connect attachments.
+
+For more considerations on the feature, check the [AWS documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-routing-policies.html#cloudwan-routing-policies-considerations).
+
 ### Attachments
 
 A Cloud WAN attachment is a connection between a network resource (such as a VPC, AWS Direct Connect gateway, SD-WAN Overlay, or a Site-to-Site VPN) and a CNE within AWS Cloud WAN. An attachment can only be associated with one segment. There are a number of different attachment types supported in Cloud WAN:
@@ -129,11 +145,6 @@ In addition, if you have any feedback on the current patterns, or do you want us
 ### What are the bandwidth and MTU supported in AWS Cloud WAN?
 
 For an updated information of quotas and limits in AWS Cloud WAN, please refer to the [documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-quotas.html).
-
-## Authors
-
-* Mevlit Mustafa, Sr. Network Specialist Solutions Architect, AWS
-* Pablo Sánchez Carmona, Sr. Network Specialist Solutions Architect, AWS
 
 ## Contributing
 
