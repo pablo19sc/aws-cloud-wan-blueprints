@@ -6,6 +6,7 @@ Within this section of the blueprints, you will see different routing policy exa
 - [Filtering secondary CIDR blocks in VPC attachments](#filtering-secondary-cidr-blocks-in-vpc-attachments)
 - [Creating IPv4 and IPv6 only segments through filtering](#creating-ipv4-and-ipv6-only-segments-through-filtering)
 - [Filtering routes (hybrid environments) using BGP Communities](#filtering-routes-hybrid-environments-using-bgp-communities)
+- [Influencing hybrid path between AWS Regions](#influencing-hybrid-path-between-aws-regions)
 
 ### Filtering secondary CIDR blocks in VPC attachments
 
@@ -493,6 +494,152 @@ The Core Network's policy creates the following resources:
             "condition-logic": "or",
             "action": {
               "type": "drop"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Influencing hybrid path between AWS Regions
+
+> **Note:** For an end-to-end testing of this use case, you need to build the hybrid connectivity to the Core Network. You will need either two **site-to-site-vpn** or **connect** attachments in two different AWS Regions. Check the use case's explanation below to understand the BGP configuration needed.
+
+Within this use case, we want to show how you can influence traffic between AWS Regions when you have two hybrid connections announcing the same route (in different CNEs). In this case, the policy document configured requires the following hybrid configuration:
+
+1. A Site-to-Site VPN connection or Connect attachment terminated in **us-east-1** and **eu-west-2**.
+2. Both connections announcing the same CIDR range.
+3. The ASNs used for the locations outside AWS are 65052 (**us-east-1**) and 65058 for (**eu-west-2**).
+
+> **Note:** Update AWS Regions to use and ASNs accordingly to your environment.
+
+With this setup, a third Region (**eu-west-1**) will prefer as next hop **eu-west-2** for the CIDR range announced. This is achieved by adding a longer AS_PATH (65500 + 65501) to the peering between **us-east-1** and **eu-west-1**.
+
+The Core Network's policy creates the following resources:
+
+* 2 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html):
+  * Segment *vpcs* for VPC connectivity, and *hybrid* for the hybrid connection (Site-to-Site VPN or Connect).
+  * Attachments will be associated to the corresponding segment from their attachment type.
+* 1 [routing policy](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) adding 2 ASNs in the AS_PATH (65500 and 65501) if the ASN **65052** (intended to be the connection terminated in **us-east-1**) is part of the AS_PATH.
+* 1 [segment action](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policies-json.html#cloudwan-segment-actions-json) associating the routing policy above in the peering between **us-east-1** and **eu-west-1** (only for the *vpcs* segment).
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      },
+      {
+        "location": "eu-west-2",
+        "asn": 65002
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "vpcs",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "hybrid",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "vpcs",
+      "share-with": [
+        "hybrid"
+      ]
+    },
+    {
+      "action": "associate-routing-policy",
+      "segment": "vpcs",
+      "edge-location-association": {
+        "routing-policy-names": [
+          "addASPath"
+        ],
+        "edge-location": "us-east-1",
+        "peer-edge-location": "eu-west-1"
+      }
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "vpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "site-to-site-vpn"
+        },
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "connect"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "hybrid"
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "addASPath",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 65052
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                65500,
+                65501
+              ]
             }
           }
         }
