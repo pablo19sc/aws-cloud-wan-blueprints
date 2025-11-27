@@ -32,9 +32,3 @@ provider "aws" {
 provider "awscc" {
   region = var.aws_regions.nvirginia
 }
-
-# Provider definition for Oregon (only used for prefix list creation and Cloud WAN association)
-provider "aws" {
-  region = "us-west-2"
-  alias  = "awsoregon"
-}
