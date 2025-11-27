@@ -20,10 +20,10 @@ This pattern demonstrates the fundamental concepts of AWS Cloud WAN through a st
 | Component | Configuration |
 |-----------|---------------|
 | **AWS Regions** | us-east-1, eu-west-1 |
-| **Segments** | *production*, *development*, *shared* |
+| **Segments** | `production`, `development`, `shared` |
 | **VPCs** | Multiple VPCs across both regions |
-| **Segment Isolation** | *production* and *shared* segments are isolated |
-| **Segment Sharing** | From *shared* to *production* and *development* |
+| **Segment Isolation** | `production` and `shared` segments are isolated |
+| **Segment Sharing** | From `shared` to `production` and `development` |
 
 ---
 
@@ -40,14 +40,14 @@ This pattern demonstrates the fundamental concepts of AWS Cloud WAN through a st
 **Segment Sharing**:
 
 - The `shared` segment shares routes with both `production` and `development`.
-- This allows workloads in production and development to access shared services.
+- This allows workloads in `production` and `development` to access `shared` services.
 - Shared services cannot communicate with each other (isolated).
 
-### Attachment Policy Logic
+### Attachment policy logic
 
 The network policy includes two attachment policy rules that determine segment association:
 
-#### Rule 100: Tag-Based Association
+#### Rule 100
 
 ```
 IF attachment_type == "vpc" AND tag "domain" exists
@@ -59,7 +59,7 @@ THEN associate to segment matching the "domain" tag value
 - VPC tagged with `domain=production` → Associates to `production` segment
 - VPC tagged with `domain=development` → Associates to `development` segment
 
-#### Rule 200: Shared Services Association
+#### Rule 200
 
 ```
 IF tag "domain" == "sharedservice"
@@ -70,7 +70,7 @@ THEN associate to "shared" segment
 
 - VPC tagged with `domain=sharedservice` → Associates to `shared` segment
 
-### Traffic Flow Examples
+### Traffic Flow
 
 | Source | Destination | Result | Reason |
 |--------|-------------|--------|--------|
@@ -85,7 +85,7 @@ THEN associate to "shared" segment
 
 ```json
 {
-  "version": "2021.12",
+  "version": "2025.11",
   "core-network-configuration": {
     "vpn-ecmp-support": false,
     "dns-support": true,
@@ -118,7 +118,6 @@ THEN associate to "shared" segment
       "isolate-attachments": true
     }
   ],
-  "network-function-groups": [],
   "segment-actions": [
     {
       "action": "share",
@@ -172,13 +171,10 @@ THEN associate to "shared" segment
 
 ## Implementation
 
-This pattern is available in both Terraform and CloudFormation:
-
 | IaC Tool | Location | Documentation |
 |----------|----------|---------------|
 | **CloudFormation** | [`./cloudformation/`](./cloudformation/) | [CloudFormation README](./cloudformation/README.md) |
 | **Terraform** | [`./terraform/`](./terraform/) | [Terraform README](./terraform/README.md) |
-
 
 ## Testing connectivity
 
@@ -231,58 +227,6 @@ ping <dev-vpc-instance-ip>
 # Expected: Timeout (no segment sharing)
 ```
 
-## Customization
-
-### Adding more segments
-
-To add a new segment (e.g., `staging`):
-
-1. Add segment definition:
-```json
-{
-  "name": "staging",
-  "require-attachment-acceptance": false
-}
-```
-
-2. Update attachment policy to recognize the tag:
-```json
-{
-  "type": "tag-value",
-  "key": "domain",
-  "value": "staging"
-}
-```
-
-3. (Optional) Add segment sharing if needed
-
-### Adding/removing AWS Regions
-
-Update the `edge-locations` in the policy:
-
-```json
-"edge-locations": [
-  {
-    "location": "ap-southeast-2"
-  },
-  {
-    "location": "eu-south-2"
-  }
-]
-```
-
-### Enabling attachment acceptance
-
-For production environments, for example, you can include manual approval:
-
-```json
-{
-  "name": "production",
-  "require-attachment-acceptance": true,
-  "isolate-attachments": true
-}
-```
-
 ## Troubleshooting
 
 ### VPCs not associating to segments
@@ -318,9 +262,3 @@ After mastering this simple architecture, explore:
 1. **[Multi-Account Pattern](../2-multi_account/)** - Deploy across multiple AWS accounts
 2. **[Traffic Inspection](../3-traffic_inspection/)** - Add centralized inspection
 3. **[Routing Policies](../4-routing_policies/)** - Implement advanced routing controls
-
-## Additional Resources
-
-- [AWS Cloud WAN segments Documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html)
-- [Attachment policies Documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-attachments.html)
-- [Segment actions Documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-actions-routes.html)

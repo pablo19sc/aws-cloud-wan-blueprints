@@ -1,5 +1,5 @@
 <!-- BEGIN_TF_DOCS -->
-# AWS Cloud WAN multi-AWS Account environment (Terraform - Spoke Account)
+# AWS Cloud WAN Multi-Account architecture (Terraform - Spoke Account)
 
 ## Requirements
 
@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | 6.4.0 |
+| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | >= 5.67.0 |
 
 ## Modules
 
