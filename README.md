@@ -51,144 +51,127 @@ AWS Cloud WAN Blueprints do not intend to teach users the recommended practices 
 
 ## AWS Cloud WAN Fundamentals
 
-### Architecture Overview
-
 [AWS Cloud WAN](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html) is a managed, intent-driven service for building and managing global networks across [AWS Regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/) and on-premises environments.
 
-**Key Advantages**:
+### Key Advantages
 
-- Automates cross-region dynamic routing, and eliminates static routing between regions.
-- Provides centralized network segmentation and configuration management.
-- Simplifies global network operations.
-- Provides capabilities to create advanced routing scenarios configured from AWS side.
+| Capability | Description |
+|------------|-------------|
+| **Automated Dynamic Routing** | Cross-region e-BGP routing |
+| **Centralized Management** | Policy-driven configuration |
+| **Network Segmentation** | Global segments for traffic isolation and routing domains |
+| **Advanced Routing** | Fine-grained control with routing policies, filtering, and BGP manipulation |
 
-### Core Components
+---
 
-#### 1. Control plane & Network policy
+### Control Plane & Network Policy
 
-**Management**: Centralized through AWS Network Manager. [Home Region](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html#cloudwan-home-region) is Oregon (us-west-2).
+| Aspect | Details |
+|--------|---------|
+| **Management Console** | AWS Network Manager |
+| **Home Region** | Oregon (us-west-2) - [Learn more](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html#cloudwan-home-region) |
+| **Policy Format** | Declarative JSON document |
+| **Policy Defines** | Segments, routing behavior, attachment mappings, access control |
 
-**Network Policy**: Declarative JSON document defining:
+The policy-driven approach automates network configuration while ensuring scalability and consistency across AWS Regions.
 
-- Segments (routing domains).
-- Routing behavior.
-- Attachment-to-segment mappings.
-- Access control and traffic routing intent.
+---
 
-This policy-driven approach automates underlying network configuration while ensuring scalability and consistency across AWS Regions.
+### Core Network Edge (CNE)
 
-#### 2. Core Network Edge (CNE)
+| Aspect | Details |
+|--------|---------|
+| **Function** | Regional router (similar to Transit Gateway) |
+| **Availability** | High-available and resilient |
+| **Deployment** | One per AWS Region where Cloud WAN operates |
+| **Peering** | Automatic full-mesh between all CNEs |
+| **Routing Protocol** | e-BGP for dynamic route exchange |
 
-**Function**: Regional router (similar to Transit Gateway). High-available and resilient, deployed in each AWS Region where you want Cloud WAN to operate.
+---
 
-**Characteristics**:
+### Segments
 
-- Automatic full-mesh peering between CNEs.
-- Dynamic routing (e-BGP) for route exchange.
+Global route table (similar to Transit Gateway route table or VRF domain)
 
-#### 3. Segments
+| Characteristic | Description |
+|----------------|-------------|
+| **Availability** | Present in every Region with a CNE |
+| **Regional Scope** | Can be limited to specific Regions |
+| **Attachment Requirement** | Only possible in Regions where segment exists |
+| **Default Behavior** | Attachments auto-propagate prefixes; intra-segment traffic allowed |
+| **Isolation** | Supports isolated and non-isolated attachments |
+| **Common Segmentation Patterns** | By environment (dev, test, prod), Business Unit (Org A, Org B, Org C), or Geography (AMER, EMEA, APAC) |
 
-**Definition**: Global route table (similar to Transit Gateway route table or VRF domain)
+---
 
-**Characteristics**:
+### Routing Action: Segment Sharing
 
-- Available in every Region with a CNE.
-- Can be limited to specific Regions.
-- Attachments only possible in Regions where segment exists.
+Exchange routes between segments (1:1 or 1:many) without inspection.
 
-**Common Segmentation Patterns**:
+> **Note**: Non-transitive - requires explicit share action between segments.
 
-1. By environment (dev, test, staging, prod, hybrid)
-2. By business unit (Org A, Org B, Org C)
-3. By geography (North America, LATAM, Europe, APAC)
+### Routing Action: Service Insertion
 
-**Default Behavior**:
+Define inspection for intra-segment, inter-segment, and egress traffic.
 
-- Attachments auto-propagate prefixes to their segment.
-- Intra-segment traffic allowed by default.
+| Component | Description |
+|-----------|-------------|
+| **Network Function Groups (NFGs)** | Container for inspection VPC attachments |
+| **Scope** | Global construct, supports cross-region inspection |
+| **Multiple NFGs** | Supported for firewall grouping |
 
-**Important differences from VRFs**:
+Service Insertion Actions:
 
-- Support isolated/non-isolated attachments.
-- No overlapping prefixes allowed.
+| Action | Use Case | Traffic Flow |
+|--------|----------|--------------|
+| `send-via` | East-west inspection | Intra-segment or inter-segment traffic |
+| `send-to` | Egress inspection | North-south traffic (internet-bound) |
 
-#### 4. Routing Actions
+### Routing Action: Routing Policies
 
-##### Segment Sharing
+Fine-grained routing controls for advanced scenarios.
 
-Exchange routes between segments (1:1 or 1:many) without inspection. Non-transitive - requires explicit share action between segments.
+| Capability | Description | Supported Attachments |
+|------------|-------------|----------------------|
+| **Route Filtering** | Drop routes based on prefixes, prefix lists, or BGP communities | All attachment types |
+| **Route Summarization** | Aggregate routes outbound | BGP-capable attachments |
+| **Path Preferences** | Influence paths via BGP attributes (Local Pref, AS-PATH, MED) | BGP-capable attachments |
+| **BGP Communities** | Transitively pass, match, and act on communities | Site-to-Site VPN, Connect |
 
-##### Service Insertion
-
-Defines inspection for:
-
-- Intra-segment traffic (isolated segments).
-- Inter-segment traffic.
-- Egress traffic.
-
-**Implementation**:
-
-- Inspection VPCs attached to Network Function Groups (NFGs).
-- NFGs act as managed security segments.
-- Support cross-region inspection.
-- Multiple NFGs supported for firewall grouping.
-
-**Actions**:
-
-- `send-via`: East-west traffic inspection (intra/inter-segment).
-- `send-to`: Egress traffic inspection.
-
-##### Routing Policies
-
-Fine-grained routing controls for:
-
-**Route Filtering**: Drop routes from propagations based on prefixes, prefix lists, or BGP communities.
-
-**Route Summarization**: Aggregate routes outbound on attachments.
-
-**Path Preferences**: Influence traffic paths via BGP attributes (Local Preference, AS-PATH, MED).
-
-**BGP Communities**: Transitively pass, match, and act on BGP communities.
+> **BGP-capable attachments**: Site-to-Site VPN, Direct Connect, Connect, Transit Gateway peering, CNE-to-CNE
 
 [See AWS documentation for considerations](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-routing-policies.html#cloudwan-routing-policies-considerations)
 
-#### 5. Attachments
+---
 
-**Definition**: Connection between network resource and CNEs.
+### Attachments
 
-**Types**:
+Connection between network resource and Core Network Edge (CNE)
 
-1. VPC
-2. Site-to-Site VPN
-3. Direct Connect Gateway
-4. Transit Gateway Route Table - Integrate existing Transit Gateways
-5. Connect - SD-WAN integration via:
-   - GRE (Generic Routing Encapsulation)
-   - Tunnel-less Connect (No Encapsulation)
+| Attachment Type | Description | Notes |
+|-----------------|-------------|-------|
+| **VPC** | Connect VPC to Cloud WAN | Most common attachment type |
+| **Site-to-Site VPN** | IPsec tunnel to on-premises | Supports BGP |
+| **Direct Connect Gateway** | Dedicated connection to on-premises | Supports BGP |
+| **Transit Gateway Route Table** | Integrate existing Transit Gateways | Enables migration path |
+| **Connect** | SD-WAN integration (GRE or tunnel-less) | Requires underlay VPC attachment |
 
-**Note**: Connect attachments require underlay (transport) VPC attachment.
+> **Important**: Each attachment can only be associated with one segment.
 
-**Constraints**: Attachment can only be associated to one segment.
+---
 
-#### 6. Attachment Policies
+### Attachment Policies
 
-**Purpose**: Rules governing attachment-to-segment/NFG association.
+Rules that govern how attachments are associated with segments or Network Function Groups (NFGs). Matching Attributes:
 
-**Matching Attributes**:
+| Attribute Type | Description |
+|----------------|-------------|
+| **Tags** | Key-value pairs on attachments |
+| **Attachment Type** | VPC, VPN, Direct Connect, etc. |
+| **AWS Account ID** | Source account of attachment |
+| **AWS Region** | Region where attachment exists |
 
-- Attachment tags
-- Attachment type
-- AWS Account ID
-- AWS Region
-
-**NFG Association**: Tags only
-
-**Require acceptance feature**:
-
-- Default: Auto-accept.
-- Optional: Manual approval required.
-- Recommended for sensitive workloads (especially without isolated attachments).
-- Pending attachments cannot access core network until approved.
+> **Note**: Pending attachments cannot access the core network until approved.
 
 ## Prerequisites
 
