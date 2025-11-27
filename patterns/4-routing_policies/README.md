@@ -272,7 +272,7 @@ The Core Network's policy creates the following resources:
 
 ### Filtering routes (hybrid environments) using BGP Communities
 
-> **Note:** For an end-to-end testing of the use case, you need to build the hybrid connectivity to the Core Network. You will need either a **site-to-site-vpn** or **connect** attachment. Check the use case's explanation below to understand the BGP configuration needed.
+> **Note:** For an end-to-end testing of this use case, you need to build the hybrid connectivity to the Core Network. You will need either a **site-to-site-vpn** or **connect** attachment. Check the use case's explanation below to understand the BGP configuration needed.
 
 Within this use case, we want to show how you can make use of the filtering capability in Cloud WAN to create traffic segmentation at the routing level while you can announce all your on-prem routes using the same BGP session. 
 
@@ -328,7 +328,6 @@ The Core Network's policy creates the following resources:
       "require-attachment-acceptance": false
     }
   ],
-  "network-function-groups": [],
   "segment-actions": [
     {
       "action": "share",
