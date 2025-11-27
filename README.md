@@ -1,155 +1,234 @@
 # AWS Cloud WAN Blueprints
 
-Welcome to the AWS Cloud WAN Blueprints!
+Welcome to AWS Cloud WAN Blueprints!
 
-This project offers a practical guidance for deploying [AWS Cloud WAN](https://aws.amazon.com/cloud-wan/), featuring real-world examples and full end-to-end deployment code. These blueprints complement AWS documentation and AWS blogs by expanding on concepts with complete implementations in various Infrastructure and Code (IaC) languages.
+This project contains a collection of AWS Cloud WAN patterns implemented in [AWS CloudFormation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html) and [Terraform](https://developer.hashicorp.com/terraform) that demonstrate how to configure and deploy global networks using [AWS Cloud WAN](https://aws.amazon.com/cloud-wan/).
 
-Designed for Level 400 (expert) users, the blueprints assume a solid understanding of AWS networking, including VPCs, subnets, route tables, Transit Gateways, and Direct Connect, as well as general networking concepts like IP addressing, routing, IPSec, GRE, BGP, VRFs, SD-WAN, and network security.
+## Motivation
 
-The guide covers advanced architectures, including integrating SD-WAN with AWS Cloud WAN, implementing multi-region inspection, extending VRFs, centralising internet egress with inspection, intra and inter segment inspection, and supporting multi-tenancy, particularly for Internet Service Providers and Telecommunications organisations.
+AWS Cloud WAN simplifies the configuration and management of global networks by providing a centralized, policy-driven approach to building multi-region connectivity. While Cloud WAN abstracts away much of the complexity of traditional AWS networking (such as manual Transit Gateway peering, static routing, or associations and propagations), understanding all the service's capabilities can be overwhelming, especially when designing production-grade architectures.
 
-## Table of Content
+AWS customers have asked for practical examples and best practices that demonstrate how to leverage Cloud WAN's full potential. These blueprints provide real-world use cases with complete, tested implementations that teams can use for:
 
-- [Consumption](#consumption)
-- [Patterns](#patterns)
-- [AWS Cloud WAN components and features](#aws-cloud-wan-components-and-features)
-  - [Control Plane, AWS Network Manager, and Network Policy](#control-plane-aws-network-manager-and-the-network-policy)
-  - [Core Network Edge (CNE)](#core-network-edge-cne)
-  - [Segments](#segments)
-  - [Routing actions](#routing-actions)
-  - [Attachments](#attachments)
-  - [Attachment policies](#attachment-policies)
-- [FAQ](#faq)
-- [Authors](#authors)
-- [Contributing](#contributing)
-- [License](#license)
+- **Proof of Concepts (PoCs)**: Quickly validate Cloud WAN capabilities in your environment.
+- **Testing and learning**: Understand how different features work together through hands-on examples.
+- **Starting point**: Use as a foundation for your production network configurations.
+- **Best practices**: Learn recommended patterns for common networking scenarios.
+
+With Cloud WAN Blueprints, customers can configure and deploy purpose-built global networks and start onboarding workloads in days, rather than spending weeks or months figuring out the optimal configuration.
 
 ## Consumption
 
-These blueprints have been designed to be consumed in the following manners:
+AWS Cloud WAN Blueprints have been designed to be consumed in the following manners:
 
-* **Reference Architecture**. You can use the examples and patterns provided as a guide to build your target architecture. From the architectures (and code provided) to can review and test the specific architecture and use it as reference to replicate in your environment.
-* **Copy & paste**. You can do a quick copy-and-paste of a specific architecture snippet into your own environment, using the blueprints as the starting point for your implementation. You can then adapt the initial pattern to customize it to your specific needs. Of course, we recommend to deploy first in pre-production and have a controlled rollout to production environments after enough testing.
+1. **Reference**: Users can refer to the patterns and snippets provided to help guide them to their desired solution. Users will typically view how the pattern or snippet is configured to achieve the desired end result and then replicate that in their environment.
 
-**The Cloud WAN blueprints are not intended to be consumed as-is directly from this project**. The patterns provided will use local varibles (as defaults or required to be provided by you) that we recommend you change when deploying in your pre-production or testing environments.
+2. **Copy & Paste**: Users can copy and paste the patterns and snippets into their own environment, using Cloud WAN Blueprints as the starting point for their implementation. Users can then adapt the initial pattern to customize it to their specific needs.
+
+**AWS Cloud WAN Blueprints are not intended to be consumed as-is directly from this project**. The patterns provided only contain `variables` when certain information is required to deploy the pattern and generally use local variables. If you wish to deploy the patterns into a different AWS Region or with other changes, it is recommended that you make those modifications locally before applying the pattern.
 
 ## Patterns
 
-1. [Simple architecture](./patterns/1-simple_architecture/)
-2. [Multi-AWS Account](./patterns/2-multi_account/)
-3. [Traffic inspection architectures](./patterns/3-traffic_inspection/)
-4. [Routing policies](./patterns/4-routing_policies/)
-5. Hybrid architectures (TBD)
+| Pattern | Description | IaC Support |
+|---------|-------------|-------------|
+| [1. Simple Architecture](./patterns/1-simple_architecture/) | Basic Cloud WAN setup with segments and attachment policies | Terraform, CloudFormation |
+| [2. Multi-AWS Account](./patterns/2-multi_account/) | Cross-account Cloud WAN deployment with AWS RAM sharing | Terraform, CloudFormation |
+| [3. Traffic Inspection](./patterns/3-traffic_inspection/) | Various inspection architectures (centralized outbound, east-west) | Terraform, CloudFormation |
+| [4. Routing Policies](./patterns/4-routing_policies/) | Advanced routing controls, filtering, and BGP manipulation | Terraform, CloudFormation |
+| 5. Hybrid Architectures | On-premises integration patterns with Site-to-Site VPN and Direct Connect | Coming Soon |
 
-## AWS Cloud WAN components and features
+## Infrastructure as Code Considerations
 
-[AWS Cloud WAN](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html) is a managed, intent-driven service for building and managing global networks across [AWS Regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/) and on-premises environments. Unlike traditional methods that require manual interconnection of multiple [AWS Transit Gateways](https://docs.aws.amazon.com/vpc/latest/tgw/what-is-transit-gateway.html) using regional route tables and static routing between Transit Gateway peering attachments, Cloud WAN automates networking including cross-region dynamic routing, network segmentation, and configuration management, streamlining global network operations.
+AWS Cloud WAN Blueprints do not intend to teach users the recommended practices for Infrastructure as Code (IaC) tools nor does it offer guidance on how users should structure their IaC projects. The patterns provided are intended to show users how they can achieve a defined architecture or configuration in a way that they can quickly and easily get up and running to start interacting with that pattern. Therefore, there are a few considerations users should be aware of when using Cloud WAN Blueprints:
 
-With Cloud WAN, we have seen customers simplify networking complexities while enabling advanced routing, segmentation, and seamless integration with existing infrastructure. This project delves AWS Cloud WAN’s capabilities, configuration approaches, and advanced routing, helping you build and optimise global networking architectures.
+1. We recognize that most users will already have existing VPCs in separate IaC projects or stacks. However, the patterns provided come complete with VPCs to ensure stable, deployable examples that have been tested and validated.
 
-### Control Plane, AWS Network Manager, and Network Policy
+2. Patterns are not intended to be consumed in-place in the same manner that one would consume a reusable module. Therefore, we do not provide extensive parameters and outputs to expose various levels of configuration for the examples. Users can modify the pattern locally after cloning to suit their requirements.
 
-Cloud WAN is managed within AWS Network Manager, providing centralized management and visualization of global networks. The control plane is deployed within the Oregon (us-west-2) region i.e. where service is managed from and the metadata is stored.
+3. The patterns use local variables (Terraform) or parameters (CloudFormation) with sensible defaults. If you wish to deploy patterns into different regions or with other changes, modify these values before deploying.
 
-The foundation of Cloud WAN is the [network policy](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-create-policy-version.html), written in a declarative language using JSON (JavaScript Object Notation) that defines all components of Cloud WAN, such as segments, routing, and how attachments map to segments. This policy-driven approach allows organizations to define their intent for access control and traffic routing, while Cloud WAN automates the underlying network configuration, ensuring scalability and consistency across Regions.
+4. For production deployments, we recommend separating your infrastructure into multiple projects or stacks (e.g., network infrastructure, workload VPCs, inspection resources) to follow IaC best practices and enable independent lifecycle management.
 
-### Core Network Edge (CNE)
+## AWS Cloud WAN Fundamentals
 
-The Core Network Edge (CNE) is a key architectural component of Cloud WAN, acting as a regional router similar to a Transit Gateway. While it appears as a single entity within a region, it is highly available and resilient behind the scenes. The CNE is a data plane construct and can be deployed in any region where Cloud WAN is supported.
+### Architecture Overview
 
-A key distinction between CNEs and Transit Gateways is that CNEs automatically establish full-mesh peering with one another, leveraging dynamic routing (e-BGP) to exchange routing information. This enables seamless, resilient, and optimal routing across all attached networks. In contrast, Transit Gateways require manual peering and rely on static routing for inter-region connectivity. A CNE supports up to 100Gbps throughput.
+[AWS Cloud WAN](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html) is a managed, intent-driven service for building and managing global networks across [AWS Regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/) and on-premises environments.
 
-### Segments
+**Key Advantages**:
 
-A segment functions as a global route table (thinking on Transit Gateway terms). In traditional networking terms, a segment can be compared to a Virtual Routing and Forwarding (VRF) domain. While segments are available in every region where a Core Network Edge exists, you can limit the segment to specific Regions. Important to mention that any supported attachments can only be attached to a segment if it exists within its local Region.
+- Automates cross-region dynamic routing, and eliminates static routing between regions.
+- Provides centralized network segmentation and configuration management.
+- Simplifies global network operations.
+- Provides capabilities to create advanced routing scenarios configured from AWS side.
 
-How segments are defined depends entirely on customer requirements, but the most common patterns include:
+### Core Components
 
-1. Segmentation by **environment** (e.g., development, test, staging, production, hybrid)
-2. Segmentation by **Business Unit** (e.g. Org A, Org B, Org C)
-3. Segmentation by **continent** (e.g., North America, Latin America, Europe, Asia Pacific)
+#### 1. Control plane & Network policy
 
-Customers may also use a combination of these patterns or a different pattern altogether, but it is important to note that Cloud WAN supports a maximum of 40 segments.
+**Management**: Centralized through AWS Network Manager. [Home Region](https://docs.aws.amazon.com/network-manager/latest/cloudwan/what-is-cloudwan.html#cloudwan-home-region) is Oregon (us-west-2).
 
-By default, when an attachment is associated with a segment, it automatically propagates its prefixes to that segment, allowing intra-segment traffic by default. While segments share similarities with VRFs, there are key differences:
+**Network Policy**: Declarative JSON document defining:
 
-* Segments can contain Isolated or Non-Isolated attachments. Isolated attachments override the next-hop for a propagated prefix, routing traffic for inspection rather than direct forwarding. More details on this can be found in the [Service Insertion](#service-insertion) section. If you do not create a service insertion, the prefixes will not propagate into the segment, despite being attached to the segment.
-* Overlapping (identical) prefixes cannot be propagated into a segment. If attempted, Cloud WAN will only propagate the first prefix, following a *first one wins* rule.
+- Segments (routing domains).
+- Routing behavior.
+- Attachment-to-segment mappings.
+- Access control and traffic routing intent.
 
-### Routing actions
+This policy-driven approach automates underlying network configuration while ensuring scalability and consistency across AWS Regions.
 
-#### Segment sharing
+#### 2. Core Network Edge (CNE)
 
-A **share** action in Cloud WAN is the exchange (propagation) of routes between segments (in a 1:1 fashion or 1:many), without requiring inspection. Important to note that segments are non-transitive, i.e. you cannot route between two segments if a share action has not been created - only learned routes that are directly attached to the segment are exchanged.
+**Function**: Regional router (similar to Transit Gateway). High-available and resilient, deployed in each AWS Region where you want Cloud WAN to operate.
 
-#### Service Insertion
+**Characteristics**:
 
-The service insertion mechanism defines how inspection is performed, supporting:
+- Automatic full-mesh peering between CNEs.
+- Dynamic routing (e-BGP) for route exchange.
 
-* Intra-segment traffic - for *isolated* segments.
-* Inter-segment traffic.
-* Egress traffic.
+#### 3. Segments
 
-To start defining Service Insertion we need to start by indicating how to include the firewalls in the network. The integration works the same as with Transit Gateway: by attaching an Inspection VPC to the network. However, there are some changes in how the inspection routing configuration works.
+**Definition**: Global route table (similar to Transit Gateway route table or VRF domain)
 
-To start, Inspection VPCs are associated to [Network Function Groups](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFGs). A NFG acts as a container for attachments hosting security functions and can be thought of as a managed security segment. Like segments, NFGs are global constructs and can be associated with multiple Inspection VPCs, supporting cross-region inspection to ensure consistent security enforcement across a global network. You can have one or many Network Function Groups, depending on how your firewalls are grouped.
+**Characteristics**:
 
-To allow inspection, you have two different actions to configure in Cloud WAN:
+- Available in every Region with a CNE.
+- Can be limited to specific Regions.
+- Attachments only possible in Regions where segment exists.
 
-* "send-via" for east-west traffic (intra or inter-segment) inspection.
-* "send-to" for egress traffic inspection.
+**Common Segmentation Patterns**:
 
-#### Routing policies
+1. By environment (dev, test, staging, prod, hybrid)
+2. By business unit (Org A, Org B, Org C)
+3. By geography (North America, LATAM, Europe, APAC)
 
-Routing Policies in Cloud WAN provide customers fine-grained routing controls to optimize route management and customize network routing behavior. A routing policy is a set of rules that gives you precise control over route propagations in your core network allowing you flexible routes management, optimized performance and greater security by controlling your routing and reachability in your global network. Using this feature, you can perform advanced routing techniques such as:
+**Default Behavior**:
 
-* **Route filtering**: filter (drop) routes from incoming and outgoing route propagations over Cloud WAN attachments. You can set advanced routing policy rules to match one or more prefixes, prefix lists or BGP communities and drop those routes from inbound or outbound route propagations on an attachment. You can also apply these route filtering rules for routes propagated across segments and across regions on the core network (CNE-to-CNE) peering mesh.
-* **Route summarization** summarize or aggregate routes outbound on Cloud WAN attachments by specifying the desired summary route. You can set an outbound route policy with rules to match on prefixes or prefix lists and specify a summary route to propagate.
-* **Path preferences** set path preferences to influence incoming and outgoing traffic paths between your core network and external networks. You can set path preferences by modifying BGP attributes such as Local Preference, AS-PATHs and MED on inbound and outbound route propagations.
-* **BGP communities**: transitively pass BGP communities in outbound route updates, match on BGP communities that are part of inbound route updates, and perform actions such as route filtering, setting path preference attributes or adding and removing BGP communities in outbound route updates.
+- Attachments auto-propagate prefixes to their segment.
+- Intra-segment traffic allowed by default.
 
-Furthermore, this feature also provides enhanced visibility into the routing databases to allow rapid troubleshooting of network issues in complex multi-path environments. 
+**Important differences from VRFs**:
 
-Routing Policies are supported on all AWS Cloud WAN attachment types, including AWS Site-to-Site VPN, AWS Direct Connect, Connect attachments, peering attachments (Transit Gateway route table), and VPC attachments, as well as on routes propagated across segments and Regions (CNE-to-CNE). Note that route summarization and BGP attribute modification are supported only on BGP-capable attachments (Site-to-Site VPN, Direct Connect, Connect, and peering—as well as on inter-segment and inter-Region (CNE-to-CNE) propagated routes). For VPC attachments, support is limited to route filtering rules (“allow” or “drop” actions) for inbound route propagation from the VPC to the core network. BGP communities are supported on Site-to-site VPN and Connect attachments.
+- Support isolated/non-isolated attachments.
+- No overlapping prefixes allowed.
 
-For more considerations on the feature, check the [AWS documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-routing-policies.html#cloudwan-routing-policies-considerations).
+#### 4. Routing Actions
 
-### Attachments
+##### Segment Sharing
 
-A Cloud WAN attachment is a connection between a network resource (such as a VPC, AWS Direct Connect gateway, SD-WAN Overlay, or a Site-to-Site VPN) and a CNE within AWS Cloud WAN. An attachment can only be associated with one segment. There are a number of different attachment types supported in Cloud WAN:
+Exchange routes between segments (1:1 or 1:many) without inspection. Non-transitive - requires explicit share action between segments.
 
-1. VPC – Connect a VPC to Cloud WAN, allowing instances within the VPC to communicate with other network segments.
-2. Site-to-Site VPN – Connect on-premises networks to Cloud WAN using an IPsec VPN tunnel.
-3. Direct Connect Gateway – Connect on-premise networks to Cloud WAN using an AWS Direct Connect.
-4. Transit Gateway Route Table – Connect an existing AWS Transit Gateway (TGW) to Cloud WAN for seamless integration.
-5. Connect - Connect to third-party SD-WAN appliances using high-performance attachments providing seamless connectivity.
-    1. GRE (Generic Routing Encapsulation).
-    2. Tunnel-less Connect (No Encapsulation).
+##### Service Insertion
 
-**Note**: A Connect Attachment is used for overlay networking to integrate with SD-WAN appliances. However, it still requires an underlay (transport) VPC attachment.
+Defines inspection for:
 
-### Attachment Policies
+- Intra-segment traffic (isolated segments).
+- Inter-segment traffic.
+- Egress traffic.
 
-Attachment Policies are rules within Cloud WAN that govern how attachments are associated with segments or NGFs in a core network. A number of attributes are supper such as tags, attachment type, AWS Account ID, or AWS Region. For NFG association, only tags are supported.
+**Implementation**:
 
-By default, segments and NFGs will auto-accept attachment requests, but this can be disabled by enabling the *require acceptance* feature. This will ensure that when an attachment is created and associated with a segment/NFG, an administrator must approve the association. Until this is done, the attachment remains in a pending state and will not be able to access the core network. The *require acceptance* feature is recommended for segments that contain sensitive workloads, especially where isolated attachments are not being used.
+- Inspection VPCs attached to Network Function Groups (NFGs).
+- NFGs act as managed security segments.
+- Support cross-region inspection.
+- Multiple NFGs supported for firewall grouping.
+
+**Actions**:
+
+- `send-via`: East-west traffic inspection (intra/inter-segment).
+- `send-to`: Egress traffic inspection.
+
+##### Routing Policies
+
+Fine-grained routing controls for:
+
+**Route Filtering**: Drop routes from propagations based on prefixes, prefix lists, or BGP communities.
+
+**Route Summarization**: Aggregate routes outbound on attachments.
+
+**Path Preferences**: Influence traffic paths via BGP attributes (Local Preference, AS-PATH, MED).
+
+**BGP Communities**: Transitively pass, match, and act on BGP communities.
+
+[See AWS documentation for considerations](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-routing-policies.html#cloudwan-routing-policies-considerations)
+
+#### 5. Attachments
+
+**Definition**: Connection between network resource and CNEs.
+
+**Types**:
+
+1. VPC
+2. Site-to-Site VPN
+3. Direct Connect Gateway
+4. Transit Gateway Route Table - Integrate existing Transit Gateways
+5. Connect - SD-WAN integration via:
+   - GRE (Generic Routing Encapsulation)
+   - Tunnel-less Connect (No Encapsulation)
+
+**Note**: Connect attachments require underlay (transport) VPC attachment.
+
+**Constraints**: Attachment can only be associated to one segment.
+
+#### 6. Attachment Policies
+
+**Purpose**: Rules governing attachment-to-segment/NFG association.
+
+**Matching Attributes**:
+
+- Attachment tags
+- Attachment type
+- AWS Account ID
+- AWS Region
+
+**NFG Association**: Tags only
+
+**Require acceptance feature**:
+
+- Default: Auto-accept.
+- Optional: Manual approval required.
+- Recommended for sensitive workloads (especially without isolated attachments).
+- Pending attachments cannot access core network until approved.
+
+## Prerequisites
+
+Before using these blueprints, you should have:
+
+- **AWS Networking Knowledge**: Understanding of VPCs, subnets, route tables, Transit Gateways, and Direct Connect.
+- **General Networking Concepts**: Familiarity with IP addressing, routing, IPSec, GRE, BGP, VRFs, SD-WAN, and network security.
+- **Infrastructure as Code**: Experience with AWS CloudFormation or Terraform.
+- **AWS Account**: An AWS account with appropriate IAM permissions to create networking resources.
+
+## Support & Feedback
+
+AWS Cloud WAN Blueprints are maintained by AWS Solution Architects. This is not part of an AWS service and support is provided as best-effort by the Cloud WAN Blueprints community. To provide feedback, please use the [issues templates](https://github.com/aws-samples/aws-cloud-wan-blueprints/issues) provided. If you are interested in contributing to Cloud WAN Blueprints, see the [Contribution guide](CONTRIBUTING.md).
 
 ## FAQ
 
-### I still see some patterns with a "TBD" description
+**Q: Why do some patterns show "Coming Soon"?**
 
-We have already an idea of the general structure of the blueprints we want to cover in this project. However, we have just started developing them and it will take some time until we have a v1 ready. Having *placeholders* allow us to provide you the patterns we have ready while we work on the rest.
+A: We're actively developing the blueprint library. We've structured the repository to show the planned patterns while we work on completing them. See [CONTRIBUTING](./CONTRIBUTING.md) to provide feedback or request new patterns.
 
-In addition, if you have any feedback on the current patterns, or do you want us to work in new patterns, see [CONTRIBUTING](./CONTRIBUTING.md) for more information.
+**Q: Can I use these patterns in production?**
 
-### What are the bandwidth and MTU supported in AWS Cloud WAN?
+A: These patterns are **not ready** for production environments. They should be customized for your specific requirements. Update variables, CIDR blocks, and configurations before deploying to production. Always test in pre-production environments first.
 
-For an updated information of quotas and limits in AWS Cloud WAN, please refer to the [documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-quotas.html).
+**Q: What are the bandwidth and MTU limits for Cloud WAN?**
 
-## Contributing
+A: Each Core Network Edge (CNE) supports up to 100 Gbps throughput. For detailed quotas and limits, see the [AWS Cloud WAN quotas documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-quotas.html).
+
+**Q: Do I need separate AWS accounts to use these patterns?**
+
+A: No, most patterns can be deployed in a single AWS account. However, the [Multi-AWS Account pattern](./patterns/2-multi_account/) demonstrates cross-account deployment using AWS Resource Access Manager (RAM).
+
+**Q: Which IaC tool should I use?**
+
+A: Both CloudFormation and Terraform are supported for most patterns. Choose based on your organization's preferences and existing tooling. Terraform patterns use the [AWS](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) and [AWSCC](https://registry.terraform.io/providers/hashicorp/awscc/latest/docs) providers, while CloudFormation patterns use native AWS resources.
+
+## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## License
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
+This library is licensed under the MIT-0 License. See [LICENSE](LICENSE).
