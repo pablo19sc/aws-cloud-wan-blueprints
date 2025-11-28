@@ -1,33 +1,53 @@
 <!-- BEGIN_TF_DOCS -->
-# AWS Cloud WAN advanced routing - Creating IPv4 and IPv6 only segments through filtering (Terraform)
+# AWS Cloud WAN IPv4/IPv6 Segment Filtering (Terraform)
 
-![IPv4-IPv6-segments](../../../../images/patterns\_filtering\_ipv4\_ipv6\_segments.png)
+![IPv4-IPv6 Segments](../../../../images/patterns\_filtering\_ipv4\_ipv6\_segments.png)
 
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions.
-- Terraform installed.
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (optional, for verification)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
+## Deployment
 
 ```bash
+# Clone the repository
 git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/4-routing_policies/2-filtering_ipv4_ipv6_only_segments/terraform
+
+# Initialize Terraform
+terraform init
+
+# (Optional) Review the planned changes
+terraform plan
+
+# Deploy the resources
+terraform apply
 ```
 
-- Move to the corresponding folder
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
 
 ```bash
-cd patterns/4-routing_policies/2-filtering_ipv4_ipv6_only_segments/terraform
+# Destroy all resources
+terraform destroy
 ```
 
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+## Next Steps
 
-**Note** EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review segment sharing with routing policies in Network Manager console
+2. **Test connectivity**: Verify IPv4-only and IPv6-only segments receive appropriate routes
+3. **Try modifications**: Add more protocol-specific segments, test dual-stack connectivity
 
 ## Requirements
 
