@@ -1,7 +1,7 @@
 <!-- BEGIN_TF_DOCS -->
-# East/West traffic (Single-hop inspection)
+# AWS Cloud WAN East-West Inspection - Single-Hop (Terraform)
 
-In the example in this repository, the following matrix is used to determine which inspection VPC is used for traffic inspection:
+![East-West Single-Hop](../../../../images/east\_west\_singlehop.png)
 
 | *AWS Region*       | us-east-1 | eu-west-1 | eu-west-2      | ap-south-east-2 |
 | --------------     |:---------:| ---------:| --------------:| ---------------:|
@@ -10,22 +10,49 @@ In the example in this repository, the following matrix is used to determine whi
 | **eu-west-2**      | us-east-1 | eu-west-1 | eu-west-1      | ap-southeast-2  |
 | **ap-southeast-2** | us-east-1 | eu-west-1 | ap-southeast-2 | ap-southeast-2  |
 
-![East-West](../../../../images/east\_west\_singlehop.png)
-
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions
-- Terraform installed
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (optional, for verification)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints, Network Firewall
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+## Deployment
 
-**Note** EC2 instances, VPC endpoints, and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+```bash
+# Clone the repository
+git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/3-traffic_inspection/4-east_west_singlehop/terraform
+
+# Initialize Terraform
+terraform init
+
+# Deploy the resources
+terraform apply
+```
+
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
+
+```bash
+# Destroy all resources
+terraform destroy
+```
+
+## Next Steps
+
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review send-via with edge overrides in Network Manager console
+2. **Test connectivity**: Verify cross-region traffic is inspected once
+3. **Compare with dual-hop**: Deploy [Pattern 3](../../3-east\_west\_dualhop/) to see the difference
+4. **Advanced patterns**: Move to [TGW patterns](../../5-east\_west\_tgw\_spoke\_vpcs\_dualhop/) or [Routing policies](../../../4-routing\_policies/) patterns
 
 ## Requirements
 

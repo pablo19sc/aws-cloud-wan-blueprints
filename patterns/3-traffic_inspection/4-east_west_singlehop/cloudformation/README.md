@@ -1,4 +1,6 @@
-# East/West traffic (Single-hop inspection)
+# AWS Cloud WAN East-West Inspection - Single-Hop (AWS CloudFormation)
+
+![East-West Single-Hop](../../../../images/east_west_singlehop.png)
 
 In the example in this repository, the following matrix is used to determine which inspection VPC is used for traffic inspection:
 
@@ -9,18 +11,44 @@ In the example in this repository, the following matrix is used to determine whi
 | **eu-west-2**      | us-east-1 | eu-west-1 | eu-west-1      | ap-southeast-2  |
 | **ap-southeast-2** | us-east-1 | eu-west-1 | ap-southeast-2 | ap-southeast-2  |
 
-![East-West](../../../../images/east_west_singlehop.png)
-
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions
 
-## Usage
-- Clone the repository
-- (Optional) Edit the VPC CIDRs in the `east_west.yaml` file if you want to test with other values.
-- You will find three files creating Core Network policy documents.
-    - `base_policy.yaml` is used to create the resources without the Service Insertion actions. This is done because a Service Insertion action cannot reference a Network Function Group that has to attachments associated.
-    - `core_network.yaml` contains the final format of the policy document, with the Service Insertion actions.
-- Deploy the resources using `make deploy`.
-- Remember to clean up resoures once you are done by using `make undeploy`.
+- **AWS Account**: With appropriate IAM permissions
+- **AWS CLI**: Installed and configured with credentials
+- **Permissions required**:
+  - CloudFormation
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints, Network Firewall
+  - IAM: Create roles and policies
+- **Make**: Installed
 
-**Note** EC2 instances, VPC endpoints, and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+## Deployment
+
+```bash
+# Clone the repository
+git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the CloudFormation directory
+cd patterns/3-traffic_inspection/4-east_west_singlehop/cloudformation
+
+# Deploy everything
+make deploy
+```
+
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
+
+```bash
+# Delete everything
+make undeploy
+```
+
+## Next Steps
+
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review send-via with edge overrides in Network Manager console
+2. **Test connectivity**: Verify cross-region traffic is inspected once
+3. **Compare with dual-hop**: Deploy [Pattern 3](../../3-east_west_dualhop/) to see the difference
+4. **Advanced patterns**: Move to [Routing policies](../../../4-routing_policies/) patterns

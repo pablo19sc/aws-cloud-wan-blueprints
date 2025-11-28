@@ -1,161 +1,97 @@
+# AWS Cloud WAN Blueprints - Traffic Inspection architectures
 
-## AWS Cloud WAN Blueprints - Traffic Inspection architectures
+## Overview
 
-Within this section of the blueprints, you will see different traffic inspection patterns with AWS Cloud WAN. The use cases covered are:
+This section demonstrates various traffic inspection patterns with AWS Cloud WAN, showing how to implement centralized security controls for egress and east-west traffic flows. These patterns use AWS Network Firewall for inspection, though the concepts apply to any network security appliance.
 
-- [Centralized Oubtound](#centralized-outbound)
-- [Centralized Oubtound - with an AWS Region without Inspection VPC](#centralized-outbound-aws-region-without-inspection-vpc)
-- [East-West (dual-hop)](#eastwest-traffic-dual-hop)
-- [East-West (single-hop)](#eastwest-traffic-single-hop)
-- [East/West traffic (Dual-hop) when the spoke VPCs are attached to AWS Transit Gateway](#eastwest-traffic-dual-hop-spoke-vpcs-attached-to-aws-transit-gateway)
-- [East/West traffic (Single-hop) when the spoke VPCs are attached to AWS Transit Gateway](#eastwest-traffic-single-hop-spoke-vpcs-attached-to-aws-transit-gateway)
+**Use these patterns to**:
 
-In all use cases, you will find two routing domains: **production** and **development**. The inspection requirements are the following ones:
+- Implement centralized egress (north-south) traffic inspection
+- Enable east-west traffic inspection between VPCs
+- Understand single-hop vs dual-hop inspection modes
+- Integrate Cloud WAN with Transit Gateway for hybrid inspection
+- Design multi-region security architectures
 
-* VPC traffic within the **production** segment will be inspected.
-* Inter-segment traffic will be inspected.
-* VPCs within the **development** segment can talk between each other directly.
+## Common architecture elements
 
-This repository does not focus on [AWS Network Firewall](https://aws.amazon.com/network-firewall/)'s policy configuration, therefore the policy rules configured are simple and only used to test connectivity.
+| Element | Configuration |
+|---------|---------------|
+| **Segments** | `production` (isolated), `development` (non-isolated) |
+| **Network Function Group** | `inspectionVpcs` for firewall VPCs |
+| **Inspection Requirements** | Production intra-segment, inter-segment, egress traffic |
 
-* For egress traffic, only traffic to *.amazon.com* domains is allowed.
-* For east-west traffic, any ICMP packets are alerted and allowed.
+### Firewall Policy Configuration
 
-### Centralized Outbound
+> **Note**: This repository focuses on Cloud WAN configuration, not firewall policy details. The AWS Network Firewall policies configured are simple and for testing only.
 
-The Core Network's policy creates the following resources:
+**Egress Traffic**:
 
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: in each routing domain's segment, a [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) action is created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.
+- Allow traffic to `*.amazon.com` domains only
+- Block all other internet-bound traffic
+
+**East-West Traffic**:
+
+- Alert and allow all ICMP packets
+- Use for connectivity testing
+
+---
+
+## Inspection Patterns
+
+| Pattern | Description | Inspection Type | IaC Support |
+|---------|-------------|-----------------|-------------|
+| [1. Centralized Outbound](#1-centralized-outbound) | Egress inspection in all regions | North-South | Terraform, CloudFormation |
+| [2. Centralized Outbound (Region Without Inspection)](#2-centralized-outbound-region-without-inspection) | Egress inspection with remote region routing | North-South | Terraform, CloudFormation |
+| [3. East-West (Dual-Hop)](#3-east-west-dual-hop) | Cross-region traffic inspected in both regions | East-West | Terraform, CloudFormation |
+| [4. East-West (Single-Hop)](#4-east-west-single-hop) | Cross-region traffic inspected in one region | East-West | Terraform, CloudFormation |
+| [5. East-West with TGW (Dual-Hop)](#5-east-west-with-transit-gateway-dual-hop) | TGW spoke VPCs with dual-hop inspection | East-West + TGW | Terraform |
+| [6. East-West with TGW (Single-Hop)](#6-east-west-with-transit-gateway-single-hop) | TGW spoke VPCs with single-hop inspection | East-West + TGW | Terraform, CloudFormation |
+
+---
+
+## 1. Centralized Outbound
+
+Inspects all egress (internet-bound) traffic from spoke VPCs through centralized inspection VPCs in each region.
 
 ![Centralized Outbound](../../images/centralizedOutbound.png)
 
-```json
-{
-    "version": "2021.12",
-    "core-network-configuration": {
-      "vpn-ecmp-support": true,
-      "asn-ranges": [
-        "64520-65525"
-      ],
-      "edge-locations": [
-        {
-          "location": "eu-west-1"
-        },
-        {
-          "location": "us-east-1"
-        },
-        {
-          "location": "ap-southeast-2"
-        }
-      ]
-    },
-    "segments": [
-      {
-        "name": "production",
-        "require-attachment-acceptance": false,
-        "isolate-attachments": true
-      },
-      {
-        "name": "development",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "network-function-groups": [
-      {
-        "name": "inspectionVpcs",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "segment-actions": [
-      {
-        "action": "send-to",
-        "segment": "production",
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ]
-        }
-      },
-      {
-        "action": "send-to",
-        "segment": "development",
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ]
-        }
-      }
-    ],
-    "attachment-policies": [
-      {
-        "rule-number": 100,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-value",
-            "operator": "equals",
-            "key": "inspection",
-            "value": "true"
-          }
-        ],
-        "action": {
-            "add-to-network-function-group": "inspectionVpcs"
-        }
-      },
-      {
-        "rule-number": 200,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-exists",
-            "key": "domain"
-          }
-        ],
-        "action": {
-          "association-method": "tag",
-          "tag-value-of-key": "domain"
-        }
-      }
-    ]
-}
-```
+### Key Components
 
-### Centralized Outbound (AWS Region without Inspection VPC)
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, ap-southeast-2 |
+| **Service Insertion** | `send-to` action for default routes (0.0.0.0/0, ::/0) |
 
-This example is similar to the one above, with the difference that we add 1 AWS Region that does not have Inspection VPC. We take advantage of Cloud WAN's service insertion feature to make sure outbound traffic is inspected by the closest Region with Inspection VPC. In this example, London (eu-west-2) does not have Inspection VPC, and we want Ireland (eu-west-1) to  inspect outbound traffic from both Ireland and London.
+### Traffic Flow
 
-The Core Network's policy creates the following resources:
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A | Production VPC B | ❌ Blocked | N/A | `production` segment is isolated |
+| Development VPC A | Development VPC B | ✅ Allowed | ❌ No | `development` segment allows intra-segment traffic |
+| Production VPC | Development VPC | ❌ Blocked | N/A | No segment sharing |
+| Production VPC | Internet | ✅ Allowed | 🔒 Yes | `send-to` action routes to inspection VPC |
+| Development VPC | Internet | ✅ Allowed | 🔒 Yes | `send-to` action routes to inspection VPC |
 
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: in each routing domain's segment, a [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) action is created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.
-  * A *with-edge-overrides* parameter is included to indicate that traffic from *eu-west-2* should be inspected by *eu-west-1* (given *eu-west-2* won't have a local Inspection VPC).
+### Implementation
 
-![Centralized Outbound](../../images/centralizedOutbound_regionWithoutInspection.png)
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./1-centralized_outbound/cloudformation/`](./1-centralized_outbound/cloudformation/) |
+| **Terraform** | [`./1-centralized_outbound/terraform/`](./1-centralized_outbound/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
-  "version": "2021.12",
+  "version": "2025.11",
   "core-network-configuration": {
     "vpn-ecmp-support": true,
-    "asn-ranges": [
-      "64520-65525"
-    ],
+    "asn-ranges": ["64520-65525"],
     "edge-locations": [
-      {
-        "location": "eu-west-1"
-      },
-      {
-        "location": "eu-west-2"
-      },
-      {
-        "location": "us-east-1"
-      },
-      {
-        "location": "ap-southeast-2"
-      }
+      {"location": "eu-west-1"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
     ]
   },
   "segments": [
@@ -180,16 +116,129 @@ The Core Network's policy creates the following resources:
       "action": "send-to",
       "segment": "production",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ],
+        "network-function-groups": ["inspectionVpcs"]
+      }
+    },
+    {
+      "action": "send-to",
+      "segment": "development",
+      "via": {
+        "network-function-groups": ["inspectionVpcs"]
+      }
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "inspection",
+          "value": "true"
+        }
+      ],
+      "action": {
+        "add-to-network-function-group": "inspectionVpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 2. Centralized Outbound (Region Without Inspection)
+
+Inspects all egress (internet-bound) traffic from spoke VPCs through centralized inspection VPCs in each region. In addition, it demonstrates how to route traffic from regions without local inspection VPCs to the nearest region with inspection capabilities.
+
+![Centralized Outbound - Region Without Inspection](../../images/centralizedOutbound_regionWithoutInspection.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, eu-west-2 (no inspection), ap-southeast-2 |
+| **Service Insertion** | `send-to` with `with-edge-overrides` |
+| **Edge Override** | eu-west-2 traffic → eu-west-1 inspection |
+
+### Traffic Flow
+
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A | Production VPC B | ❌ Blocked | N/A | `production` segment is isolated |
+| Development VPC A | Development VPC B | ✅ Allowed | ❌ No | `development` segment allows intra-segment traffic |
+| Production VPC | Development VPC | ❌ Blocked | N/A | No segment sharing |
+| VPC (eu-west-1) | Internet | ✅ Allowed | 🔒 Yes (local) | Inspected in eu-west-1 |
+| VPC (us-east-1) | Internet | ✅ Allowed | 🔒 Yes (local) | Inspected in us-east-1 |
+| VPC (ap-southeast-2) | Internet | ✅ Allowed | 🔒 Yes (local) | Inspected in ap-southeast-2 |
+| VPC (eu-west-2) | Internet | ✅ Allowed | 🔒 Yes (remote) | Routed to eu-west-1 for inspection |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./2-centralized_outbound_region_without_inspection/cloudformation/`](./2-centralized_outbound_region_without_inspection/cloudformation/) |
+| **Terraform** | [`./2-centralized_outbound_region_without_inspection/terraform/`](./2-centralized_outbound_region_without_inspection/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "asn-ranges": ["64520-65525"],
+    "edge-locations": [
+      {"location": "eu-west-1"},
+      {"location": "eu-west-2"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false,
+      "isolate-attachments": true
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "network-function-groups": [
+    {
+      "name": "inspectionVpcs",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "send-to",
+      "segment": "production",
+      "via": {
+        "network-function-groups": ["inspectionVpcs"],
         "with-edge-overrides": [
           {
-            "edge-sets": [
-              [
-                "eu-west-2"
-              ]
-            ],
+            "edge-sets": [["eu-west-2"]],
             "use-edge-location": "eu-west-1"
           }
         ]
@@ -199,16 +248,10 @@ The Core Network's policy creates the following resources:
       "action": "send-to",
       "segment": "development",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ],
+        "network-function-groups": ["inspectionVpcs"],
         "with-edge-overrides": [
           {
-            "edge-sets": [
-              [
-                "eu-west-2"
-              ]
-            ],
+            "edge-sets": [["eu-west-2"]],
             "use-edge-location": "eu-west-1"
           }
         ]
@@ -248,320 +291,324 @@ The Core Network's policy creates the following resources:
   ]
 }
 ```
+</details>
 
-### East/West traffic (Dual-hop)
+---
 
-The Core Network's policy creates the following resources:
+## 3. East-West (Dual-Hop)
 
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: one [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments. The mode used is *dual-hop*, meaning that traffic traversing two AWS Regions is inspected in both of them.
+Inspects traffic between VPCs (east-west) with dual-hop mode: cross-region traffic is inspected in both source and destination regions.
 
-![East-West](../../images/east_west_dualhop.png)
+![East-West Dual-Hop](../../images/east_west_dualhop.png)
 
-```json
-{
-    "version": "2021.12",
-    "core-network-configuration": {
-      "vpn-ecmp-support": true,
-      "asn-ranges": [
-        "64520-65525"
-      ],
-      "edge-locations": [
-        {
-          "location": "eu-west-1"
-        },
-        {
-          "location": "us-east-1"
-        },
-        {
-          "location": "ap-southeast-2"
-        }
-      ]
-    },
-    "segments": [
-      {
-        "name": "production",
-        "require-attachment-acceptance": false,
-        "isolate-attachments": true
-      },
-      {
-        "name": "development",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "network-function-groups": [
-      {
-        "name": "inspectionVpcs",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "segment-actions": [
-      {
-        "action": "send-via",
-        "segment": "production",
-        "mode": "dual-hop",
-        "when-sent-to": {
-          "segments": "*"
-        },
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ]
-        }
-      }
-    ],
-    "attachment-policies": [
-      {
-        "rule-number": 100,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-value",
-            "operator": "equals",
-            "key": "inspection",
-            "value": "true"
-          }
-        ],
-        "action": {
-            "add-to-network-function-group": "inspectionVpcs"
-        }
-      },
-      {
-        "rule-number": 200,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-exists",
-            "key": "domain"
-          }
-        ],
-        "action": {
-          "association-method": "tag",
-          "tag-value-of-key": "domain"
-        }
-      }
-    ]
-}
-```
+### Key Components
 
-### East/West traffic (Single-hop)
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, ap-southeast-2 |
+| **Service Insertion** | `send-via` with `mode: dual-hop` |
 
-The Core Network's policy creates the following resources:
+### Traffic Flow
 
-* 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-* **Service Insertion rules**: one [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
-  * The mode used is *single-hop*, meaning that traffic traversing two AWS Regions is inspected in only one of them.
-  * In addition, one of the Regions (*eu-west-2* in the example) does not have local Inspection VPC. With *single-hop* mode, the traffic from this Region to other ones is inspected in the Region with a local Inspection VPC. For inspection between segments within the Region, *eu-west-1* is used.
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A (same region) | Production VPC B (same region) | ✅ Allowed | 🔒 Yes | Intra-segment inspection via `send-via` |
+| Production VPC (us-east-1) | Production VPC (eu-west-1) | ✅ Allowed | 🔒🔒 Yes (dual) | Inspected in both us-east-1 and eu-west-1 |
+| Production VPC | Development VPC (same region) | ✅ Allowed | 🔒 Yes | Inter-segment inspection via `send-via` |
+| Production VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | 🔒🔒 Yes (dual) | Inspected in both us-east-1 and eu-west-1 |
+| Development VPC A | Development VPC B | ✅ Allowed | ❌ No | `development` segment allows direct traffic |
 
-The following matrix is used to determine which Inspection VPC is used for traffic inspection:
+### Implementation
 
-| *AWS Region*       | us-east-1 | eu-west-1 | eu-west-2      | ap-south-east-2 |
-| --------------     |:---------:| ---------:| --------------:| ---------------:|
-| **us-east-1**      | us-east-1 | us-east-1 | us-east-1      | us-east-1       |
-| **eu-west-1**      | us-east-1 | eu-west-1 | eu-west-1      | eu-west-1       |
-| **eu-west-2**      | us-east-1 | eu-west-1 | eu-west-1      | ap-southeast-2  |
-| **ap-southeast-2** | us-east-1 | eu-west-1 | ap-southeast-2 | ap-southeast-2  |
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./3-east_west_dualhop/cloudformation/`](./3-east_west_dualhop/cloudformation/) |
+| **Terraform** | [`./3-east_west_dualhop/terraform/`](./3-east_west_dualhop/terraform/) |
 
-![East-West-SingleHop](../../images/east_west_singlehop.png)
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
-    "version": "2021.12",
-    "core-network-configuration": {
-      "vpn-ecmp-support": true,
-      "asn-ranges": [
-        "64520-65525"
-      ],
-      "edge-locations": [
-        {
-          "location": "eu-west-1"
-        },
-        {
-          "location": "eu-west-2"
-        },
-        {
-          "location": "us-east-1"
-        },
-        {
-          "location": "ap-southeast-2"
-        }
-      ]
-    },
-    "segments": [
-      {
-        "name": "production",
-        "require-attachment-acceptance": false,
-        "isolate-attachments": true
-      },
-      {
-        "name": "development",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "network-function-groups": [
-      {
-        "name": "inspectionVpcs",
-        "require-attachment-acceptance": false
-      }
-    ],
-    "segment-actions": [
-      {
-        "action": "send-via",
-        "segment": "production",
-        "mode": "single-hop",
-        "when-sent-to": {
-          "segments": "*"
-        },
-        "via": {
-          "network-function-groups": [
-            "inspectionVpcs"
-          ],
-          "with-edge-overrides": [
-            {
-              "edge-sets": [
-                [
-                  "us-east-1",
-                  "eu-west-1"
-                ]
-              ],
-              "use-edge-location": "us-east-1"
-            },
-            {
-              "edge-sets": [
-                [
-                  "us-east-1",
-                  "ap-southeast-2"
-                ]
-              ],
-              "use-edge-location": "us-east-1"
-            },
-            {
-              "edge-sets": [
-                [
-                  "ap-southeast-2",
-                  "eu-west-1"
-                ]
-              ],
-              "use-edge-location": "eu-west-1"
-            },
-            {
-              "edge-sets": [
-                [
-                  "eu-west-2",
-                  "eu-west-1"
-                ]
-              ],
-              "use-edge-location": "eu-west-1"
-            },
-            {
-              "edge-sets": [
-                [
-                  "eu-west-2",
-                  "us-east-1"
-                ]
-              ],
-              "use-edge-location": "us-east-1"
-            },
-            {
-              "edge-sets": [
-                [
-                  "ap-southeast-2",
-                  "eu-west-2"
-                ]
-              ],
-              "use-edge-location": "ap-southeast-2"
-            },
-            {
-              "edge-sets": [
-                [
-                  "eu-west-2"
-                ]
-              ],
-              "use-edge-location": "eu-west-1"
-            }
-          ]
-        }
-      }
-    ],
-    "attachment-policies": [
-      {
-        "rule-number": 100,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-value",
-            "operator": "equals",
-            "key": "inspection",
-            "value": "true"
-          }
-        ],
-        "action": {
-            "add-to-network-function-group": "inspectionVpcs"
-        }
-      },
-      {
-        "rule-number": 200,
-        "condition-logic": "or",
-        "conditions": [
-          {
-            "type": "tag-exists",
-            "key": "domain"
-          }
-        ],
-        "action": {
-          "association-method": "tag",
-          "tag-value-of-key": "domain"
-        }
-      }
-    ]
-}
-```
-
-### East/West traffic (Dual-hop). Spoke VPCs attached to AWS Transit Gateway
-
-In this use case, you have two sets of Inspection VPCs: the ones attached to AWS Cloud WAN are used for inter-Region traffic, while the ones attached to AWS Transit Gateway are used for intra-Region traffic.
-
-* If you are using AWS Network Firewall as firewall solution, the use of different Inspection VPCs means duplicating the firewall resources.
-  * If you don't want this duplication of resources (extra cost or managament), you can also have only 1 Inspection VPC attached to both Cloud WAN and Transit Gateway. This pattern will require more specific route when configuring the VPC routes pointing back to the network - *local* routes via Transit Gateway, *cross-Region* routes to Cloud WAN.
-* If you are using another firewall solution behind [Gateway Load Balancer](https://aws.amazon.com/elasticloadbalancing/gateway-load-balancer/) (GWLB), you can place GWLB endpoints in several VPCs pointing to the same GWLB. This means that, although you have two different VPCs to simplify the routing, you are not duplicating the number of firewall resources.
-
-The following resources are created:
-
-* In each AWS Region, the spoke VPCs are attached to a Transit Gateway. Four TGW route tables are created:
-  * The spoke VPCs of the production routing domain are associated to the *production* route table.
-  * The spoke VPCs of the development routing domain are associated and propagate their routes to the *development* route table.
-  * A third route table (*prod_routes*) is created to inject the production spoke VPCs to Cloud WAN. This enables Cloud WAN to learn the production VPCs CIDRs to create the corresponding routes when configuring the Service Insertion *send-via* actions.
-  * The Inspection VPC attachment to the Transit Gateway is associated to a fourth route table (*post_inspection*), for the delivery of the intra-Region inspected traffic.
-* Each Transit Gateway is peered with Cloud WAN.
-* Two static routes (0.0.0.0/0 & ::/0) in both the *production* and *development* TGW route tables pointing to the Inspection VPC TGW attachment, to enable intra-Region inspection. You can also use more specific routing (either a supernet or a [managed prefix list](https://docs.aws.amazon.com/vpc/latest/userguide/managed-prefix-lists.html) containing all the VPC CIDRs in the Region)
-* The Cloud WAN policy configures the following:
-  * 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that associates each Transit Gateway route table attachment to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*. In the example, the *production* and *prod_routes* TGW route table are associated to the *production* segment, and the *development* route table is associated to the *development* segment.
-  * 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-  * **Service Insertion rules**:
-    * Two [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) actions to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
-    * With the send-via action, you will see in the TGWs a path to connect VPCs within the same routing domain (*production* via inspection, *development* direct path) and within different routing domains in different Regions (via inspection). However, routes between segments in the same Region (via inspection) won't be propagated. **That's why we need a dedicated Inspection VPC attached to the Transit Gateway to enable intra-Region traffic.**
-
-![East-West-DualHop](../../images/east_west_tgw_spokeVpcs_dualhop.png)
-
-```json
-{
-  "version": "2021.12",
+  "version": "2025.11",
   "core-network-configuration": {
-    "asn-ranges": [
-      "64520-65525"
-    ],
+    "vpn-ecmp-support": true,
+    "asn-ranges": ["64520-65525"],
     "edge-locations": [
-      {
-        "location": "eu-west-1"
+      {"location": "eu-west-1"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false,
+      "isolate-attachments": true
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "network-function-groups": [
+    {
+      "name": "inspectionVpcs",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "send-via",
+      "segment": "production",
+      "mode": "dual-hop",
+      "when-sent-to": {
+        "segments": "*"
       },
-      {
-        "location": "us-east-1"
-      },
-      {
-        "location": "ap-southeast-2"
+      "via": {
+        "network-function-groups": ["inspectionVpcs"]
       }
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "inspection",
+          "value": "true"
+        }
+      ],
+      "action": {
+        "add-to-network-function-group": "inspectionVpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 4. East-West (Single-Hop)
+
+Inspects east-west traffic with single-hop mode: cross-region traffic is inspected in only one region.
+
+![East-West Single-Hop](../../images/east_west_singlehop.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, eu-west-2 (no inspection), ap-southeast-2 |
+| **Service Insertion** | `send-via` with `mode: single-hop` |
+| **Edge Overrides** | Define which region inspects traffic between region pairs |
+
+### Traffic Flow
+
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A (same region) | Production VPC B (same region) | ✅ Allowed | 🔒 Yes | Intra-segment inspection via `send-via` |
+| Production VPC (us-east-1) | Production VPC (eu-west-1) | ✅ Allowed | 🔒 Yes (single) | Inspected in us-east-1 only (per matrix) |
+| Production VPC (eu-west-2) | Production VPC (eu-west-1) | ✅ Allowed | 🔒 Yes (single) | Inspected in eu-west-1 (no local inspection) |
+| Production VPC | Development VPC (same region) | ✅ Allowed | 🔒 Yes | Inter-segment inspection via `send-via` |
+| Production VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | 🔒 Yes (single) | Inspected in us-east-1 only (per matrix) |
+| Development VPC A | Development VPC B | ✅ Allowed | ❌ No | `development` segment allows direct traffic |
+
+### Inspection Matrix
+
+| Source / Destination | us-east-1 | eu-west-1 | eu-west-2 | ap-southeast-2 |
+|---------------------|-----------|-----------|-----------|----------------|
+| **us-east-1** | us-east-1 | us-east-1 | us-east-1 | us-east-1 |
+| **eu-west-1** | us-east-1 | eu-west-1 | eu-west-1 | eu-west-1 |
+| **eu-west-2** | us-east-1 | eu-west-1 | eu-west-1 | ap-southeast-2 |
+| **ap-southeast-2** | us-east-1 | eu-west-1 | ap-southeast-2 | ap-southeast-2 |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./4-east_west_singlehop/cloudformation/`](./4-east_west_singlehop/cloudformation/) |
+| **Terraform** | [`./4-east_west_singlehop/terraform/`](./4-east_west_singlehop/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "asn-ranges": ["64520-65525"],
+    "edge-locations": [
+      {"location": "eu-west-1"},
+      {"location": "eu-west-2"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false,
+      "isolate-attachments": true
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "network-function-groups": [
+    {
+      "name": "inspectionVpcs",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "send-via",
+      "segment": "production",
+      "mode": "single-hop",
+      "when-sent-to": {
+        "segments": "*"
+      },
+      "via": {
+        "network-function-groups": ["inspectionVpcs"],
+        "with-edge-overrides": [
+          {
+            "edge-sets": [["us-east-1", "eu-west-1"]],
+            "use-edge-location": "us-east-1"
+          },
+          {
+            "edge-sets": [["us-east-1", "ap-southeast-2"]],
+            "use-edge-location": "us-east-1"
+          },
+          {
+            "edge-sets": [["ap-southeast-2", "eu-west-1"]],
+            "use-edge-location": "eu-west-1"
+          },
+          {
+            "edge-sets": [["eu-west-2", "eu-west-1"]],
+            "use-edge-location": "eu-west-1"
+          },
+          {
+            "edge-sets": [["eu-west-2", "us-east-1"]],
+            "use-edge-location": "us-east-1"
+          },
+          {
+            "edge-sets": [["ap-southeast-2", "eu-west-2"]],
+            "use-edge-location": "ap-southeast-2"
+          },
+          {
+            "edge-sets": [["eu-west-2"]],
+            "use-edge-location": "eu-west-1"
+          }
+        ]
+      }
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "inspection",
+          "value": "true"
+        }
+      ],
+      "action": {
+        "add-to-network-function-group": "inspectionVpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 5. East-West with Transit Gateway (Dual-Hop)
+
+Spoke VPCs attach to Transit Gateway, which then peers with Cloud WAN. Uses separate inspection VPCs for intra-region (TGW) and inter-region (Cloud WAN) traffic. **Why two sets of Inspection VPCs?**
+
+1. **TGW Inspection VPCs**: Handle intra-region traffic between segments
+2. **Cloud WAN Inspection VPCs**: Handle inter-region traffic
+
+![East-West TGW Dual-Hop](../../images/east_west_tgw_spokeVpcs_dualhop.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, ap-southeast-2 |
+| **Spoke VPC Attachment** | Transit Gateway (not direct to Cloud WAN) |
+| **TGW Route Tables** | `production`, `development`, `prod_routes`, `post_inspection` |
+| **Inspection VPCs** | Separate for TGW (intra-region) and Cloud WAN (inter-region) |
+| **Service Insertion** | `send-via` dual-hop for inter-region |
+
+### Traffic Flow
+
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A (same region) | Production VPC B (same region) | ✅ Allowed | 🔒 Yes (TGW) | Intra-region via TGW inspection VPC |
+| Production VPC (us-east-1) | Production VPC (eu-west-1) | ✅ Allowed | 🔒🔒 Yes (dual) | Inter-region via Cloud WAN (dual-hop) |
+| Production VPC | Development VPC (same region) | ✅ Allowed | 🔒 Yes (TGW) | Inter-segment via TGW inspection VPC |
+| Production VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | 🔒🔒 Yes (dual) | Inter-region via Cloud WAN (dual-hop) |
+| Development VPC A | Development VPC B (same region) | ✅ Allowed | ❌ No | `development` TGW route table allows direct |
+| Development VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | ❌ No | `development` segment allows direct |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./5-east_west_tgw_spoke_vpcs_dualhop/terraform/`](./5-east_west_tgw_spoke_vpcs_dualhop/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "asn-ranges": ["64520-65525"],
+    "edge-locations": [
+      {"location": "eu-west-1"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
     ],
     "vpn-ecmp-support": false
   },
@@ -589,14 +636,10 @@ The following resources are created:
       "mode": "dual-hop",
       "segment": "production",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ]
+        "network-function-groups": ["inspectionVpcs"]
       },
       "when-sent-to": {
-        "segments": [
-          "development"
-        ]
+        "segments": ["development"]
       }
     },
     {
@@ -604,9 +647,7 @@ The following resources are created:
       "mode": "dual-hop",
       "segment": "production",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ]
+        "network-function-groups": ["inspectionVpcs"]
       },
       "when-sent-to": {
         "segments": "production"
@@ -646,44 +687,57 @@ The following resources are created:
   ]
 }
 ```
+</details>
 
-### East/West traffic (Single-hop). Spoke VPCs attached to AWS Transit Gateway
+---
 
-The following resources are created:
+## 6. East-West with Transit Gateway (Single-Hop)
 
-* In each AWS Region, the spoke VPCs are attached to a Transit Gateway. Three TGW route tables are created:
-  * The spoke VPCs of the production routing domain are associated to the **production* route table.
-  * The spoke VPCs of the development routing domain are associated and propagate their routes to the *development* route table.
-  * A third route table (*prod_routes*) is created to inject the production spoke VPCs to Cloud WAN. This enables Cloud WAN to learn the production VPCs CIDRs to create the corresponding routes when configuring the Service Insertion actions.
-* Each Transit Gateway is peered with Cloud WAN.
-* The Cloud WAN policy configures the following:
-  * 1 [segment](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* (isolated) and *development*. Core Network's policy includes an attachment policy rule that associates each Transit Gateway route table attachment to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*. In the example, the *production* and *prod_routes* TGW route table are associated to the *production* segment, and the *development* route table is associated to the *development* segment.
-  * 1 [network function group](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-function-groups.html) (NFG) for the inspection VPCs. Core Network's policy includes an attachment policy rule that associates the inspection VPC to the NFG if the attachment includes the following tag: *inspection=true*.
-  * **Service Insertion rules**:
-    * One [send-via](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=north%2Dsouth%20traffic.-,Send%20via,-%E2%80%94%20Traffic%20flows%20east) action to inspect the traffic between VPCs in the *production* segment, and between the *production* and *development* segments.
-    * With only the send-via action, you will see in the TGWs a path to connect VPCs within the same routing domain (*production* via inspection, *development* direct path) and within different routing domains in different Regions (via inspection). However, routes between segments in the same Region (via inspection) won't be propagated.
-    * To allow intra-Region communication, two [send-to](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-service-insertion.html#:~:text=insertion%2Denabled%20segment.-,Send%20to,-%E2%80%94%20Traffic%20flows%20north) actions are created to send the default traffic (0.0.0.0/0 and ::/0) to the inspection VPCs.
+Spoke VPCs attach to Transit Gateway, which then peers with Cloud WAN. This pattern uses single-hop inspection for inter-region traffic and combines `send-to` and `send-via` actions.
 
-![East-West-SingleHop](../../images/east_west_tgw_spokeVpcs_singlehop.png)
+![East-West TGW Single-Hop](../../images/east_west_tgw_spokeVpcs_singlehop.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, ap-southeast-2 |
+| **Spoke VPC Attachment** | Transit Gateway (not direct to Cloud WAN) |
+| **TGW Route Tables** | `production`, `development`, `prod_routes` |
+| **Service Insertion** | `send-to` (intra-region) + `send-via` single-hop (inter-region) |
+| **Inspection** | Single-hop for inter-region, Cloud WAN for intra-region |
+
+### Traffic Flow
+
+| Source | Destination | Result | Inspection | Reason |
+|--------|-------------|--------|------------|--------|
+| Production VPC A (same region) | Production VPC B (same region) | ✅ Allowed | 🔒 Yes (Cloud WAN) | Intra-region via Cloud WAN `send-to` |
+| Production VPC (us-east-1) | Production VPC (eu-west-1) | ✅ Allowed | 🔒 Yes (single) | Inter-region via Cloud WAN (single-hop) |
+| Production VPC | Development VPC (same region) | ✅ Allowed | 🔒 Yes (Cloud WAN) | Inter-segment via Cloud WAN `send-to` |
+| Production VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | 🔒 Yes (single) | Inter-region via Cloud WAN (single-hop) |
+| Development VPC A | Development VPC B (same region) | ✅ Allowed | ❌ No | `development` TGW route table allows direct |
+| Development VPC (us-east-1) | Development VPC (eu-west-1) | ✅ Allowed | ❌ No | `development` segment allows direct |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./6-east_west_tgw_spoke_vpcs_singlehop/cloudformation/`](./6-east_west_tgw_spoke_vpcs_singlehop/cloudformation/) |
+| **Terraform** | [`./6-east_west_tgw_spoke_vpcs_singlehop/terraform/`](./6-east_west_tgw_spoke_vpcs_singlehop/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
-  "version": "2021.12",
+  "version": "2025.11",
   "core-network-configuration": {
     "vpn-ecmp-support": true,
-    "asn-ranges": [
-      "64520-65525"
-    ],
+    "asn-ranges": ["64520-65525"],
     "edge-locations": [
-      {
-        "location": "eu-west-1"
-      },
-      {
-        "location": "us-east-1"
-      },
-      {
-        "location": "ap-southeast-2"
-      }
+      {"location": "eu-west-1"},
+      {"location": "us-east-1"},
+      {"location": "ap-southeast-2"}
     ]
   },
   "segments": [
@@ -708,18 +762,14 @@ The following resources are created:
       "action": "send-to",
       "segment": "production",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ]
+        "network-function-groups": ["inspectionVpcs"]
       }
     },
     {
       "action": "send-to",
       "segment": "development",
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ]
+        "network-function-groups": ["inspectionVpcs"]
       }
     },
     {
@@ -730,35 +780,18 @@ The following resources are created:
         "segments": "*"
       },
       "via": {
-        "network-function-groups": [
-          "inspectionVpcs"
-        ],
+        "network-function-groups": ["inspectionVpcs"],
         "with-edge-overrides": [
           {
-            "edge-sets": [
-              [
-                "us-east-1",
-                "eu-west-1"
-              ]
-            ],
+            "edge-sets": [["us-east-1", "eu-west-1"]],
             "use-edge-location": "us-east-1"
           },
           {
-            "edge-sets": [
-              [
-                "us-east-1",
-                "ap-southeast-2"
-              ]
-            ],
+            "edge-sets": [["us-east-1", "ap-southeast-2"]],
             "use-edge-location": "us-east-1"
           },
           {
-            "edge-sets": [
-              [
-                "ap-southeast-2",
-                "eu-west-1"
-              ]
-            ],
+            "edge-sets": [["ap-southeast-2", "eu-west-1"]],
             "use-edge-location": "eu-west-1"
           }
         ]
@@ -798,3 +831,63 @@ The following resources are created:
   ]
 }
 ```
+</details>
+
+---
+
+## Testing Connectivity
+
+### 1. Verify Attachments
+
+Check that inspection VPCs are associated with the NFG and spoke VPCs with segments.
+
+### 2. Test Egress Traffic (patterns 1 & 2)
+
+```bash
+# From spoke VPC instance
+curl https://www.amazon.com
+# Should succeed (allowed by firewall policy)
+
+curl https://www.nytimes.com
+# Should fail (blocked by firewall policy)
+```
+
+### 3. Test East-West Traffic (patterns 3 to 6)
+
+**Intra-Segment (Production to Production)**:
+
+```bash
+# From production VPC A to production VPC B (same region)
+ping <production-vpc-b-ip>
+# Should work (ICMP allowed by firewall policy, inspected)
+
+# From production VPC in us-east-1 to production VPC in eu-west-1
+ping <production-vpc-ip-in-eu-west-1>
+# Should work (ICMP allowed by firewall policy, inspected)
+```
+
+```bash
+# From development VPC A to development VPC B (same region)
+ping <development-vpc-b-ip>
+# Should work (development segment allows direct traffic, no inspection)
+
+# From development VPC in us-east-1 to development VPC in eu-west-1
+ping <development-vpc-ip-in-eu-west-1>
+# Should work (development segment allows direct traffic, no inspection)
+```
+
+**Inter-Segment (Production to Development)**:
+
+```bash
+# From production VPC to development VPC (same region)
+ping <development-vpc-ip>
+# Should work (send-via enables inspection)
+
+# From production VPC in us-east-1 to development VPC in eu-west-1
+ping <development-vpc-ip-in-eu-west-1>
+# Should work (send-via enables inspection)
+```
+
+### 4. Verify Inspection
+
+Check AWS Network Firewall logs to confirm traffic is being inspected.

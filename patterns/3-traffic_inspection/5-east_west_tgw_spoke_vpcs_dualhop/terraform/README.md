@@ -1,22 +1,51 @@
 <!-- BEGIN_TF_DOCS -->
-# East/West traffic, with Spoke VPCs attached to a peered AWS Transit Gateway (Dual-hop inspection)
+# AWS Cloud WAN East-West with Transit Gateway - Dual-Hop (Terraform)
 
-![East-West-DualHop](../../../../images/east\_west\_tgw\_spokeVpcs\_dualhop.png)
+![East-West TGW Dual-Hop](../../../../images/east\_west\_tgw\_spokeVpcs\_dualhop.png)
 
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions
-- Terraform installed
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (optional, for verification)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints, Network Firewall, Transit Gateway
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+## Deployment
 
-**Note** EC2 instances, VPC endpoints, and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+```bash
+# Clone the repository
+git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/3-traffic_inspection/5-east_west_tgw_spoke_vpcs_dualhop/terraform
+
+# Initialize Terraform
+terraform init
+
+# Deploy the resources
+terraform apply
+```
+
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
+
+```bash
+# Destroy all resources
+terraform destroy
+```
+
+## Next Steps
+
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review TGW route tables and Cloud WAN peering
+2. **Test connectivity**: Verify intra-region uses TGW inspection, inter-region uses Cloud WAN
+3. **Compare with single-hop**: Deploy [Pattern 6](../../6-east\_west\_tgw\_spoke\_vpcs\_singlehop/) to see the difference
+4. **Advanced patterns**: Move to [Routing policies](../../../4-routing\_policies/) patterns
 
 ## Requirements
 

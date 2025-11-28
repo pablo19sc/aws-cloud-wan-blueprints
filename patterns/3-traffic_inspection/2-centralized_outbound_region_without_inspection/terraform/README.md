@@ -1,22 +1,51 @@
 <!-- BEGIN_TF_DOCS -->
-# Centralized Outbound inspection with AWS Cloud WAN (AWS Region without Inspection VPC)
+# AWS Cloud WAN Centralized Outbound - Region Without Inspection (Terraform)
 
-![Centralized Outbound](../../../../images/centralizedOutbound\_regionWithoutInspection.png)
+![Centralized Outbound - Region Without Inspection](../../../../images/centralizedOutbound\_regionWithoutInspection.png)
 
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions
-- Terraform installed
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (optional, for verification)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints, Network Firewall
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+## Deployment
 
-**Note** EC2 instances and AWS Network Firewall endpoints will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+```bash
+# Clone the repository
+git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/3-traffic_inspection/2-centralized_outbound_region_without_inspection/terraform
+
+# Initialize Terraform
+terraform init
+
+# Deploy the resources
+terraform apply
+```
+
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
+
+```bash
+# Destroy all resources
+terraform destroy
+```
+
+## Next Steps
+
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review edge overrides in Network Manager console
+2. **Test connectivity**: Verify eu-west-2 traffic is inspected in eu-west-1
+3. **Try modifications**: Add more regions without inspection, adjust edge overrides
+4. **Advanced patterns**: Move to [East-West patterns](../../3-east\_west\_dualhop/) or [Routing policies](../../../4-routing\_policies/) patterns
 
 ## Requirements
 
@@ -29,8 +58,8 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.4.0 |
-| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | 6.4.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.67.0 |
+| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | >= 5.67.0 |
 
 ## Modules
 
