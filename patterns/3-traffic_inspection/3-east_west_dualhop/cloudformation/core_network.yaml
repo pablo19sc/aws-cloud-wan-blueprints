@@ -19,7 +19,7 @@ Resources:
         - Key: Name
           Value: core-network-centralized-outbound
       PolicyDocument:
-        version: "2021.12"
+        version: "2025.11"
         core-network-configuration:
           vpn-ecmp-support: false
           asn-ranges:

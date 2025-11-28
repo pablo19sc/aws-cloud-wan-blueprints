@@ -1,24 +1,102 @@
+# AWS Cloud WAN Blueprints - Multi-Account architecture
 
-## AWS Cloud WAN Blueprints - Multi-AWS Account environment
+## Overview
 
-Within this section of the blueprints, we want to provide an example on how AWS Cloud WAN works in multi-AWS Account environments. The code provided will suppose the following two AWS Account types:
+This pattern demonstrates how AWS Cloud WAN operates in multi-account environments using [AWS Resource Access Manager](https://docs.aws.amazon.com/ram/latest/userguide/what-is.html) (RAM) to share the core network across accounts.
 
-- **Networking AWS Account**. Central AWS Account where Cloud WAN's core network is built. The following resources are built within this account:
-    - Global network and core network. The core network policy builds the following global network:
-        - Two AWS Regions, two [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html). The *production* segment is isolated, meaning that VPCs within this segment won't be able to talk between each other. The *development* segment allows communication between VPCs within the segment.
-        - One [attachment policies](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-attachments.html) checking that attachments are coming from the spoke AWS Account, they are type VPC, and that the tag with a key `domain` exists. If all the conditions are met, it will check the value of the tag `domain`, and it will associate the attachment to a segment with the same name.
-    - [AWS Resource Access Manager](https://aws.amazon.com/ram/) (RAM) resource share. The core network is shared with the spoke AWS Account.
-- **Spoke AWS Account**. Any AWS Account that wants to connect their workloads to Cloud WAN. The following resources are built within this account:
-    - This examples supposes that Networking and Spoke AWS Accounts are not in the same [AWS Organization](https://aws.amazon.com/organizations/), therefore the RAM resource share must be accepted. Check the [documentation](https://docs.aws.amazon.com/organizations/latest/userguide/services-that-can-integrate-ram.html) for more information how RAM works with AWS Organizations.
-    - Spoke VPCs and compute resources (EC2 instances and EC2 instance connect endpoint). Cloud WAN's VPC attachments are created with the corresponding tags - these tags are passed to the Networking Account by the service to automate association (from attachment policies).
+**Use this pattern to**:
 
-**Note** that given the core network is a global resource, this sharing must be done from the N. Virginia (us-east-1) Region - check the [documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-share-network.html) for more information.
+- Understand multi-account Cloud WAN deployments.
+- Learn how to share core networks using AWS RAM.
+- Implement centralized network management with distributed workloads.
+- Build a foundation for enterprise-scale architectures.
+
+> **Note**: This pattern demonstrates cross-account sharing and does not include service insertion (traffic inspection) or routing policies. For inspection architectures, see the [Traffic Inspection Patterns](../3-traffic_inspection/) section. For routing policies, see the [Routing policies](../4-routing_policies/) section.
+
+## Architecture
+
+### What gets deployed
+
+| Component | Configuration |
+|-----------|---------------|
+| **AWS Accounts** | Networking Account, Spoke Account |
+| **AWS Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development` |
+| **VPCs** | Multiple VPCs in Spoke Account |
+| **RAM Sharing** | Core Network shared from Networking to Spoke Account |
+| **Segment Isolation** | `production` segment is isolated |
+
+---
 
 ![Multi-Account Architecture](../../images/patterns_multi_account.png)
 
+### Account structure
+
+#### Networking Account
+
+The central account that owns and manages the Cloud WAN infrastructure:
+
+| Resource | Purpose |
+|----------|---------|
+| **Global Network** | Container for the core network |
+| **Core Network** | Global network infrastructure with policy |
+| **Network Policy** | Defines segments, attachment policies, and routing |
+| **RAM Resource Share** | Shares core network with spoke account(s) |
+
+> **Important**: Core network sharing must be done from the us-east-1 region. See [AWS documentation](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-share-network.html) for details.
+
+#### Spoke Account
+
+Any account that connects workloads to the shared Cloud WAN:
+
+| Resource | Purpose |
+|----------|---------|
+| **VPCs** | Workload VPCs across regions |
+| **Cloud WAN Attachments** | Connect VPCs to shared core network |
+| **EC2 Instances** | Compute resources for testing |
+| **EC2 Instance Connect Endpoints** | Secure access to instances |
+| **RAM Share Acceptance** | Accept core network share (if not in same AWS Organization) |
+
+### Segment Configuration
+
+| Segment | Isolation | Intra-Segment Communication |
+|---------|-----------|----------------------------|
+| **production** | ✅ Isolated | ❌ Blocked (isolated) |
+| **development** | ❌ Not Isolated | ✅ Allowed |
+
+### Attachment policy logic
+
+The network policy includes one attachment policy rule that determines segment association for spoke account attachments:
+
+#### Rule 100
+
+```
+IF account_id == "<spoke-account-id>" 
+   AND attachment_type == "vpc" 
+   AND tag "domain" exists
+THEN associate to segment matching the "domain" tag value
+```
+
+**Example**:
+
+- VPC in spoke account tagged with `domain=production` → Associates to `production` segment
+- VPC in spoke account tagged with `domain=development` → Associates to `development` segment
+
+**Key Feature**: The `account-id` condition ensures only attachments from the authorized spoke account are automatically associated.
+
+### Traffic Flow Examples
+
+| Source | Destination | Result | Reason |
+|--------|-------------|--------|--------|
+| Production VPC A (Spoke) | Production VPC B (Spoke) | ❌ Blocked | `production` segment is isolated |
+| Development VPC A (Spoke) | Development VPC B (Spoke) | ✅ Allowed | `development` segment allows intra-segment traffic |
+| Production VPC (Spoke) | Development VPC (Spoke) | ❌ Blocked | No segment sharing between `production` and `development` |
+
+## Network Policy
+
 ```json
 {
-  "version": "2021.12",
+  "version": "2025.11",
   "core-network-configuration": {
     "vpn-ecmp-support": false,
     "asn-ranges": [
@@ -33,6 +111,17 @@ Within this section of the blueprints, we want to provide an example on how AWS 
       }
     ]
   },
+  "segments": [
+    {
+      "isolate-attachments": true,
+      "name": "production",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    }
+  ],
   "attachment-policies": [
     {
       "rule-number": 100,
@@ -53,22 +142,133 @@ Within this section of the blueprints, we want to provide an example on how AWS 
         },
         {
           "type": "account-id",
-          "value": "225963075789",
+          "value": "<spoke-account-id>",
           "operator": "equals"
         }
       ]
     }
-  ],
-  "segments": [
-    {
-      "isolate-attachments": true,
-      "name": "production",
-      "require-attachment-acceptance": false
-    },
-    {
-      "name": "development",
-      "require-attachment-acceptance": false
-    }
   ]
 }
 ```
+
+## Implementation
+
+| IaC Tool | Location | Documentation |
+|----------|----------|---------------|
+| **CloudFormation** | [`./cloudformation/`](./cloudformation/) | [CloudFormation README](./cloudformation/README.md) |
+| **Terraform** | [`./terraform/`](./terraform/) | [Terraform README](./terraform/README.md) |
+
+### Deployment Order
+
+1. **Networking Account**: Deploy core network and RAM share
+2. **Spoke Account**: Accept RAM share (if required)
+3. **Spoke Account**: Deploy VPCs and attachments
+
+## Testing Connectivity
+
+After deployment, test connectivity between VPCs in the spoke account:
+
+### 1. Verify RAM Share Status
+
+**In Networking Account**:
+
+```bash
+aws ram get-resource-shares \
+  --resource-owner SELF \
+  --region us-east-1
+```
+
+**In Spoke Account**:
+
+```bash
+aws ram get-resource-share-invitations \
+  --region us-east-1
+```
+
+### 2. Verify Segment Associations
+
+Check that VPCs are associated with the correct segments in the AWS Network Manager console (accessible from both accounts).
+
+### 3. Test Intra-Segment Communication
+
+**Development Instances** (should work):
+
+```bash
+# From Development VPC A, ping Development VPC B
+ping <dev-vpc-b-instance-ip>
+```
+
+**Production Instances** (should fail):
+
+```bash
+# From Production VPC A, ping Production VPC B
+ping <prod-vpc-b-instance-ip>
+# Expected: Timeout (isolated segment)
+```
+
+### 4. Test Cross-Region Communication
+
+**Same Segment, Different Regions** (should work):
+
+```bash
+# From Development VPC in us-east-1, ping Development VPC in eu-west-1
+ping <dev-vpc-eu-west-1-instance-ip>
+```
+
+### 5. Test Cross-Segment Isolation
+
+**Production to Development** (should fail):
+
+```bash
+# From Production VPC, ping Development VPC
+ping <dev-vpc-instance-ip>
+# Expected: Timeout (no segment sharing)
+```
+
+## Troubleshooting
+
+### RAM Share not visible in Spoke Account
+
+**Check**:
+
+1. Share was created in us-east-1 region
+2. Correct spoke account ID in share
+3. Spoke account has accepted invitation (if required)
+4. Check RAM share status in both accounts
+
+### VPCs not associating to segments
+
+**Check**:
+
+1. RAM share is accepted and active
+2. VPC has correct `domain` tag
+3. Attachment policy includes spoke account ID
+4. Cloud WAN attachment is in "Available" state
+5. Policy is in "LIVE" state
+
+### Cannot create attachments in Spoke Account
+
+**Check**:
+
+1. Core network is shared via RAM
+2. RAM share is accepted
+3. IAM permissions allow attachment creation
+4. Core network ID is correct
+
+### Cross-Account connectivity issues
+
+**Check**:
+
+1. VPC route tables in spoke account have routes to Cloud WAN
+2. Security groups allow required traffic
+3. Network ACLs are not blocking traffic
+4. Both VPCs are in the same segment
+5. Segment isolation settings match expectations
+
+## Next Steps
+
+After mastering this multi-account architecture, explore:
+
+1. **[Traffic Inspection](../3-traffic_inspection/)** - Add centralized inspection across accounts
+2. **[Routing Policies](../4-routing_policies/)** - Implement advanced routing controls
+3. **Scale to Multiple Spoke Accounts** - Expand to enterprise-scale deployments

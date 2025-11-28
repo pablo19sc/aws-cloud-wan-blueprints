@@ -1,5 +1,5 @@
 <!-- BEGIN_TF_DOCS -->
-# AWS Cloud WAN multi-AWS Account environment (Terraform - Networking Account)
+# AWS Cloud WAN Multi-Account architecture - Networking Account (Terraform)
 
 ## Requirements
 
@@ -12,7 +12,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.4.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.67.0 |
 
 ## Modules
 

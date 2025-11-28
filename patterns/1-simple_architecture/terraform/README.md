@@ -1,33 +1,54 @@
 <!-- BEGIN_TF_DOCS -->
-# AWS Cloud WAN simple architecture (Terraform)
+# AWS Cloud WAN Simple Architecture (Terraform)
 
 ![Simple Architecture](../../../images/patterns\_simple\_architecture.png)
 
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions.
-- Terraform installed.
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (optional, for verification)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
+## Deployment
 
 ```bash
+# Clone the repository
 git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/1-simple_architecture/terraform
+
+# Initialize Terraform
+terraform init
+
+# (Optional) Review the planned changes
+terraform plan
+
+# Deploy the resources
+terraform apply
 ```
 
-- Move to the corresponding folder
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+
+## Cleanup
 
 ```bash
-cd patterns/1-simple_architecture/terraform
+# Destroy all resources
+terraform destroy
 ```
 
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+## Next Steps
 
-**Note** EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review segment associations and routing in Network Manager console
+2. **Test connectivity**: Verify traffic flows match expected behavior
+3. **Try modifications**: Add VPCs, change segments, update policies
+4. **Advanced patterns**: Move to [Multi-Account](../../2-multi\_account/), [Traffic inspection](../../3-traffic\_inspection/), or [Routing policies](../../4-routing\_policies/) patterns
 
 ## Requirements
 
@@ -40,8 +61,8 @@ cd patterns/1-simple_architecture/terraform
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.4.0 |
-| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | 6.4.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.67.0 |
+| <a name="provider_aws.awsnvirginia"></a> [aws.awsnvirginia](#provider\_aws.awsnvirginia) | >= 5.67.0 |
 
 ## Modules
 
