@@ -1,24 +1,59 @@
+# AWS Cloud WAN Blueprints - Routing Policies
 
-## AWS Cloud WAN Blueprints - Routing policies (use cases)
+## Overview
 
-Within this section of the blueprints, you will see different routing policy examples within Cloud WAN. The use cases covered are:
+This section demonstrates advanced routing policy capabilities in AWS Cloud WAN, providing fine-grained control over route filtering, summarization, and BGP configuration control across your global network. Routing policies enable you to implement sophisticated routing scenarios that go beyond basic segment connectivity.
 
-- [Filtering secondary CIDR blocks in VPC attachments](#filtering-secondary-cidr-blocks-in-vpc-attachments)
-- [Creating IPv4 and IPv6 only segments through filtering](#creating-ipv4-and-ipv6-only-segments-through-filtering)
-- [Filtering routes (hybrid environments) using BGP Communities](#filtering-routes-hybrid-environments-using-bgp-communities)
-- [Influencing hybrid path between AWS Regions](#influencing-hybrid-path-between-aws-regions)
+**Use these patterns to**:
 
-### Filtering secondary CIDR blocks in VPC attachments
+- Filter unwanted routes from your attachments (secondary CIDRs, specific prefixes), between segments, or between AWS Regions
+- Segment hybrid traffic using BGP communities
+- Influence traffic paths between regions using AS-PATH manipulation
+- Implement advanced routing controls for complex network architectures
 
-Within this use case, we want to show how you can add filtering route policies in Cloud WAN at the attachment level. The use case is a common one we see in several architectures: VPCs have different VPC CIDR blocks, with one of them used only for internal traffic (think on cluster intra-VPC communication). This range, as it's intended to be internal, it's best to not propagate it to the network to avoid undesired routing behaviors.
+## Routing Policy Patterns
 
-The Core Network's policy creates the following resources:
+| Pattern | Description | Policy Type | IaC Support |
+|---------|-------------|-------------|-------------|
+| [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform |
+| [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
+| [4. BGP Community Filtering](#3-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
+| [5. Hybrid Path Influence](#4-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
 
-* 2 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html) per routing domain - *production* and *development*. Core Network's policy includes an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*
-* 1 [routing policy](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) filtering any IPv4 CIDR block equals to 10.100.0.0/16 (our secondary CIDR block in the example). Direction of the rule is `inbound` (only option for policies to associate to VPC attachments).
-* 1 [attachment policy rule](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-attachments.html) associating the routing policy defined to any attachment with the routing policy label `vpcAttachments`.
+---
 
-![Filtering-Secondary-Blocks](../../images/patterns_filtering_secondary_cidr_blocks.png)
+## 1. Filtering Secondary CIDR Blocks in VPC Attachments
+
+This pattern shows how you can filters secondary CIDR blocks from VPC attachments to prevent internal-only ranges from propagating to the broader network. VPCs often have secondary CIDR blocks for internal-only traffic (e.g., Kubernetes pod networks, cluster communication). These ranges should not propagate to avoid undesired routing behaviors.
+
+![Filtering Secondary Blocks](../../images/patterns_filtering_secondary_cidr_blocks.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development` |
+| **Routing Policy** | Filter 10.100.0.0/16 (secondary CIDR) |
+| **Policy Direction** | `inbound` (VPC attachments only support inbound) |
+| **Policy Association** | To attachments via routing policy label `vpcAttachments` |
+
+### Traffic Flow
+
+| Source | Destination | Result | Reason |
+|--------|-------------|--------|--------|
+| Production VPC A | Production VPC B | ✅ Allowed | Primary CIDR blocks propagated to segment |
+| Development VPC A | Development VPC B | ✅ Allowed | Primary CIDR blocks propagated to segment |
+| Production VPC | Development VPC | ❌ Blocked | No segment sharing |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./1-filtering_vpc_secondary_cidr_blocks/terraform/`](./1-filtering_vpc_secondary_cidr_blocks/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
@@ -115,22 +150,45 @@ The Core Network's policy creates the following resources:
   ]
 }
 ```
+</details>
 
-### Creating IPv4 and IPv6 only segments through filtering
+---
 
-Within this use case, we want to show how you can make use of the filtering capability in Cloud WAN when creating sharing between segments. As example, we are creating IPv4 and IPv6 only segments when sharing routes from segments with route tables including both IPv4 and IPv6 (dual-stack VPCs). 
+## 2. Creating IPv4 and IPv6 Only Segments
 
-The Core Network's policy creates the following resources:
+This patterns shows how you can create protocol-specific segments by filtering IPv4 or IPv6 routes when sharing between dual-stack and single-stack segments. You may want to take advantage of the filtering capability when sharing segments when dual-stack VPCs need to share routes with protocol-specific segments for specialized workloads or compliance requirements (e.g., IPv6-only applications, legacy IPv4-only systems).
 
-* 4 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html):
-  * 2 per routing domain - *production* and *development*. VPCs will be associated to these segments using an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*.
-  * 2 segments for IPv4 (*ipv4only*) and IPv6 (*ipv6*) only routes - both *production* and *development* routes will be shared.
-* 2 [routing policies](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) filtering either any IPv4 (0.0.0.0/0) or IPv6 (::/0) CIDR blocks. These routing policies are configured as `inbound` - this is important as we want only the filtering to happen from *production* or *development* to the other segments (and not the other way around).
-* 4 [share segment actions](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-actions-routes.html).
-  * Between *ipv4only* and *production* / *development* - filtering any IPv6 route.
-  * Between *ipv6only* and *production* / *development* - filtering any IPv4 route.
+![IPv4-IPv6 Segments](../../images/patterns_filtering_ipv4_ipv6_segments.png)
 
-![IPv4-IPv6-segments](../../images/patterns_filtering_ipv4_ipv6_segments.png)
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development` (dual-stack), `ipv4only`, `ipv6only` |
+| **Routing Policies** | `filterIpv4` (drops 0.0.0.0/0), `filterIpv6` (drops ::/0) |
+| **Policy Direction** | `inbound` |
+| **Segment Actions** | Share with filtering between dual-stack and single-stack |
+
+### Traffic Flow
+
+| Source | Destination | Result | Route Filtering | Reason |
+|--------|-------------|--------|-----------------|--------|
+| Prod/Dev VPC (IPv4) | ipv4only segment VPC (IPv4) | ✅ Allowed | ✅ IPv4 allowed | IPv6 routes filtered, IPv4 routes shared |
+| Prod/Dev VPC (IPv6) | ipv4only segment VPC | ❌ Blocked | ❌ IPv6 filtered | IPv6 routes dropped by `filterIpv6` policy |
+| Prod/Dev VPC (IPv6) | ipv6only segment VPC (IPv6) | ✅ Allowed | ✅ IPv6 allowed | IPv4 routes filtered, IPv6 routes shared |
+| Prod/Dev VPC (IPv4) | ipv6only segment VPC | ❌ Blocked | ❌ IPv4 filtered | IPv4 routes dropped by `filterIpv4` policy |
+| Production VPC | Production VPC | ❌ Blocked | N/A | No segment sharing |
+| ipv4only VPC | ipv6only VPC | ❌ Blocked | N/A | No segment sharing |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./2-filtering_ipv4_ipv6_only_segments/terraform/`](./2-filtering_ipv4_ipv6_only_segments/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
@@ -270,29 +328,77 @@ The Core Network's policy creates the following resources:
   ]
 }
 ```
+</details>
 
-### Filtering routes (hybrid environments) using BGP Communities
+---
 
-> **Note:** For an end-to-end testing of this use case, you need to build the hybrid connectivity to the Core Network. You will need either a **site-to-site-vpn** or **connect** attachment. Check the use case's explanation below to understand the BGP configuration needed.
+## 3. Traffic Inspection After Filtering
 
-Within this use case, we want to show how you can make use of the filtering capability in Cloud WAN to create traffic segmentation at the routing level while you can announce all your on-prem routes using the same BGP session. 
+> **Coming Soon**: This pattern will demonstrate how to combine routing policies with service insertion to filter routes before inspection.
 
-The idea is that you tag each routing domain's routes by using different BGP communities. In Cloud WAN, you can then filter those routes to different segments depending those BGP communities.
+---
 
-The Core Network's policy creates the following resources:
+## 4. Filtering Routes Using BGP Communities
 
-* 3 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html):
-  * 2 for routing domain - *development* and *test*. VPCs will be associated to these segments using an attachment policy rule that maps each spoke VPCs to the corresponding segment if the attachment contains the following tag: *domain={segment_name}*.
-  * 1 *hybrid* segment, where your hybrid connectivity attachments will be associated. An attachment policy rule will make sure that any **site-to-site-vpn** or **connect** attachment is associated to this segment.
-* 2 [routing policies](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) doing a similar action: filter all the routes (outbound direction) except the ones tagged with the configured BGP Community (each policy is configured with a different value). **Feel free to adapt the BGP communities configured to your use case**. 
-  * (rule 100) Allowing any traffic coming from the specified BGP Community.
-  * (rule 200) Blocking any IPv4 range under 0.0.0.0/0.
-  * (rule 300) Blocking the 0.0.0.0/0 route.
-* 2 [share segment actions](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-network-actions-routes.html). Each share segment action is configured with the correponding route policy.
-  * Between *hybrid* and *development*.
-  * Between *hybrid* and *test*.
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish hybrid connectivity (Site-to-Site VPN or Connect attachment) with BGP configuration to test end-to-end. The IaC code creates the Cloud WAN infrastructure, but you must configure your on-premises router to advertise routes with BGP communities.
 
-![Filtering-BGP-Community](../../images/patterns_filtering_bgp_community.png.png)
+This pattern shows how you can segment hybrid traffic by routing domain using BGP communities, allowing a single BGP session to announce all on-premises routes while maintaining logical separation.
+
+It's common practice to maintain traffic segmentation in hybrid environments (development, test, production). However, before routing policies in Cloud WAN, this segmentation required a single BGP session per routing domain. While you can still follow that approach, if you want to simplify the configuration and operation of your hybrid communication, you can tag your routes with BGP communities under a single BGP session, and Cloud WAN filters them to different segments.
+
+![Filtering BGP Community](../../images/patterns_filtering_bgp_community.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `development`, `test`, `hybrid` |
+| **Routing Policies** | Filter routes by BGP community (65052:100, 65051:100) |
+| **Policy Direction** | `outbound` |
+| **Hybrid Attachments** | Site-to-Site VPN or Connect |
+
+### How It Works
+
+1. On-premises router tags routes with BGP communities:
+   - Development routes: 65052:100
+   - Test routes: 65051:100
+2. Single BGP session announces all routes to hybrid segment
+3. Routing policies filter routes when sharing to workload segments:
+   - Development segment receives only 65052:100 routes
+   - Test segment receives only 65051:100 routes
+
+### BGP Configuration Example
+
+```
+! On-premises router
+route-map DEV-ROUTES permit 10
+ match ip address prefix-list DEV-PREFIXES
+ set community 65052:100
+
+route-map TEST-ROUTES permit 10
+ match ip address prefix-list TEST-PREFIXES
+ set community 65051:100
+```
+
+### Traffic Flow
+
+| Source | Destination | BGP Community | Result | Reason |
+|--------|-------------|---------------|--------|--------|
+| On-premises (Dev) | Development VPC | 65052:100 | ✅ Allowed | Community matches development filter |
+| On-premises (Dev) | Test VPC | 65052:100 | ❌ Blocked | Community doesn't match test filter |
+| On-premises (Test) | Test VPC | 65051:100 | ✅ Allowed | Community matches test filter |
+| On-premises (Test) | Development VPC | 65051:100 | ❌ Blocked | Community doesn't match development filter |
+| Development VPC | Test VPC | N/A | ❌ Blocked | No segment sharing |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./4-filtering_by_bgp_community/terraform/`](./4-filtering_by_bgp_community/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
 
 ```json
 {
@@ -458,7 +564,7 @@ The Core Network's policy creates the following resources:
             "match-conditions": [
               {
                 "type": "community-in-list",
-                "value": "65052:100"
+                "value": "65051:200"
               }
             ],
             "condition-logic": "or",
@@ -502,28 +608,60 @@ The Core Network's policy creates the following resources:
   ]
 }
 ```
+</details>
 
-### Influencing hybrid path between AWS Regions
+---
 
-> **Note:** For an end-to-end testing of this use case, you need to build the hybrid connectivity to the Core Network. You will need either two **site-to-site-vpn** or **connect** attachments in two different AWS Regions. Check the use case's explanation below to understand the BGP configuration needed.
+## 5. Influencing Hybrid Path Between AWS Regions
 
-Within this use case, we want to show how you can influence traffic between AWS Regions when you have two hybrid connections announcing the same route (in different CNEs). In this case, the policy document configured requires the following hybrid configuration:
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish two hybrid connections (Site-to-Site VPN or Connect attachments) in different AWS regions, both announcing the same route prefix. The IaC code creates the Cloud WAN infrastructure, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
 
-1. A Site-to-Site VPN connection or Connect attachment terminated in **us-east-1** and **eu-west-2**.
-2. Both connections announcing the same CIDR range.
-3. The ASNs used for the locations outside AWS are 65052 (**us-east-1**) and 65058 for (**eu-west-2**).
+This pattern shows how you can influences traffic paths between AWS Regions when multiple hybrid connections announce the same routes, using AS-PATH prepending to control path selection. 
 
-> **Note:** Update AWS Regions to use and ASNs accordingly to your environment.
+With hybrid connections in multiple AWS Regions announcing the same CIDR range, you need to control which path traffic takes between AWS regions. This pattern uses AS-PATH manipulation (in Cloud WAN) to make one path less preferred.
 
-With this setup, a third Region (**eu-west-1**) will prefer as next hop **eu-west-2** for the CIDR range announced. This is achieved by adding a longer AS_PATH (65500 + 65501) to the peering between **us-east-1** and **eu-west-1**.
+![Hybrid Path Influence](../../images/patterns_influencing_path_between_regions.png)
 
-The Core Network's policy creates the following resources:
+### Key Components
 
-* 2 [segments](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policy-segments.html):
-  * Segment *vpcs* for VPC connectivity, and *hybrid* for the hybrid connection (Site-to-Site VPN or Connect).
-  * Attachments will be associated to the corresponding segment from their attachment type.
-* 1 [routing policy](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-route-policy.html) adding 2 ASNs in the AS_PATH (65500 and 65501) if the ASN **65052** (intended to be the connection terminated in **us-east-1**) is part of the AS_PATH.
-* 1 [segment action](https://docs.aws.amazon.com/network-manager/latest/cloudwan/cloudwan-policies-json.html#cloudwan-segment-actions-json) associating the routing policy above in the peering between **us-east-1** and **eu-west-1** (only for the *vpcs* segment).
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1, eu-west-2 |
+| **Segments** | `vpcs`, `hybrid` |
+| **Routing Policy** | Prepend ASNs 65500, 65501 to routes from ASN 65052 |
+| **Policy Direction** | `outbound` (on CNE-to-CNE peering) |
+| **Hybrid Connections** | us-east-1 (ASN 65052), eu-west-2 (ASN 65058) |
+
+### How It Works
+
+**Scenario**:
+
+- Hybrid connection in us-east-1 (ASN 65052) and eu-west-2 (ASN 65058) announces the same CIDR range
+- Goal: Make eu-west-1 prefer eu-west-2 path (only in the `vpcs` segment)
+
+**Solution**:
+
+1. Routing policy matches routes with ASN 65052 in AS-PATH
+2. Prepends ASNs 65500 and 65501 to those routes
+3. Applied to us-east-1 ↔ eu-west-1 CNE peering (only in the `vpcs` segment)
+4. eu-west-1 sees longer AS-PATH via us-east-1, prefers eu-west-2
+
+### Traffic Flow
+
+| Source | Path via us-east-1 | Path via eu-west-2 | Selected Path |
+|--------|-------------------|-------------------|---------------|
+| **eu-west-1 VPC** | 65000 → 65500, 65501, 65052 (length: 4) | 65002 → 65058 (length: 2) | ✅ eu-west-2 (shorter) |
+| **us-east-1 VPC** | 65052 (local, length: 1) | 65002 → 65058 (length: 2) | ✅ us-east-1 (local) |
+| **eu-west-2 VPC** | 65000 → 65052 (length: 2) | 65058 (local, length: 1) | ✅ eu-west-2 (local) |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./5-influencing_hybrid_path_between_cnes/terraform/`](./5-influencing_hybrid_path_between_cnes/terraform/) |
+
+<details>
+<summary>View Networking Policy</summary>
 
 ```json
 {
@@ -648,3 +786,46 @@ The Core Network's policy creates the following resources:
   ]
 }
 ```
+</details>
+
+---
+
+## Testing Routing Policies
+
+### 1. Verify Policy Association
+
+Check that routing policies are associated correctly in Network Manager console.
+
+### 2. Test Route Filtering
+
+```bash
+# Check Cloud WAN route tables
+aws networkmanager get-network-routes \
+  --global-network-id <global-network-id> \
+  --core-network-id <core-network-id> \
+  --route-table-identifier <route-table-arn>
+
+# Verify filtered routes are not present
+# Verify allowed routes are present
+```
+
+### 3. Retrieve BGP Sessions and Routes per CNE
+
+Use the `list-core-network-routing-information` API to view BGP sessions and routes announced to each CNE per segment:
+
+```bash
+# List routing information for a specific CNE and segment
+aws networkmanager list-core-network-routing-information \
+  --core-network-id <core-network-id> \
+  --edge-location <edge-location> \
+  --segment-name <segment-name>
+```
+
+This API returns:
+
+- **BGP sessions**: Active BGP peerings with hybrid attachments
+- **Route announcements**: Routes being announced to/from each CNE
+- **AS-PATH information**: Complete AS-PATH for each route
+- **BGP communities**: Communities attached to routes (if applicable)
+- **MED (Multi-Exit Discriminator)**: Metric values for route preference
+- **Local Preference**: Local preference values for path selection

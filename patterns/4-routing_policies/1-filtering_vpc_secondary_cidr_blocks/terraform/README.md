@@ -1,49 +1,127 @@
 <!-- BEGIN_TF_DOCS -->
-# AWS Cloud WAN advanced routing - Filtering VPC secondary CIDR blocks (Terraform)
+# AWS Cloud WAN Filtering Secondary CIDR Blocks (Terraform)
 
-![Filtering-Secondary-Blocks](../../../../images/patterns\_filtering\_secondary\_cidr\_blocks.png)
+![Filtering Secondary Blocks](../../../../images/patterns\_filtering\_secondary\_cidr\_blocks.png)
 
 ## Prerequisites
-- An AWS account with an IAM user with the appropriate permissions.
-- Terraform installed.
 
-## Code Principles:
-- Writing DRY (Do No Repeat Yourself) code using a modular design pattern
+- **AWS Account**: With appropriate IAM permissions
+- **Terraform**: >= 1.3.0 installed
+- **AWS CLI**: Configured with credentials (required for routing policy label attachment)
+- **Permissions required**:
+  - Network Manager
+  - EC2: VPC, subnets, instances, endpoints
+  - IAM: Create roles and policies
 
-## Usage
-- Clone the repository
+## Deployment
 
 ```bash
+# Clone the repository
 git clone https://github.com/aws-samples/aws-cloud-wan-blueprints.git
+
+# Navigate to the Terraform directory
+cd patterns/4-routing_policies/1-filtering_vpc_secondary_cidr_blocks/terraform
+
+# Initialize Terraform
+terraform init
+
+# (Optional) Review the planned changes
+terraform plan
+
+# Deploy the resources
+terraform apply
 ```
 
-- Move to the corresponding folder
+### Attach Routing Policy Labels
+
+> **Note**: This manual step is required until the AWS or AWSCC Terraform providers support routing policy label attachment natively. We will update this pattern as soon as provider support becomes available.
+
+After deployment, attach routing policy labels to VPC attachments using the AWS CLI:
 
 ```bash
-cd patterns/4-routing_policies/1-filtering_vpc_secondary_cidr_blocks/terraform
-```
-
-- (Optional) Edit the variables.tf file in the project root directory - if you want to test with different parameters.
-- Deploy the resources using `terraform apply`.
-- **While we include new resources in the Terraform providers**, you will need to attach the `routing-policy-label` to the VPC attachments using the CLI ([put-attachment-routing-policy-label](https://docs.aws.amazon.com/zh_tw/cli/latest/reference/networkmanager/put-attachment-routing-policy-label.html)).
-
-```
+# Get the Core Network ID and VPC attachment IDs
 CORE_NETWORK_ID=$(terraform output -json cloud_wan | jq -r '.core_network')
 VPC_IRELAND_PROD=$(terraform output -json vpcs | jq -r '.ireland.attachment_ids.prod')
 VPC_IRELAND_DEV=$(terraform output -json vpcs | jq -r '.ireland.attachment_ids.dev')
 VPC_NVIRGINIA_PROD=$(terraform output -json vpcs | jq -r '.nvirginia.attachment_ids.prod')
 VPC_NVIRGINIA_DEV=$(terraform output -json vpcs | jq -r '.nvirginia.attachment_ids.dev')
 
-aws networkmanager put-attachment-routing-policy-label --core-network-id $CORE_NETWORK_ID --attachment-id $VPC_IRELAND_PROD --routing-policy-label vpcAttachments --region eu-west-1
-aws networkmanager put-attachment-routing-policy-label --core-network-id $CORE_NETWORK_ID --attachment-id $VPC_IRELAND_DEV --routing-policy-label vpcAttachments --region eu-west-1
+# Attach routing policy labels
+aws networkmanager put-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_IRELAND_PROD \
+  --routing-policy-label vpcAttachments \
+  --region eu-west-1
 
-aws networkmanager put-attachment-routing-policy-label --core-network-id $CORE_NETWORK_ID --attachment-id $VPC_NVIRGINIA_PROD --routing-policy-label vpcAttachments --region us-east-1
-aws networkmanager put-attachment-routing-policy-label --core-network-id $CORE_NETWORK_ID --attachment-id $VPC_NVIRGINIA_DEV --routing-policy-label vpcAttachments --region us-east-1
+aws networkmanager put-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_IRELAND_DEV \
+  --routing-policy-label vpcAttachments \
+  --region eu-west-1
+
+aws networkmanager put-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_NVIRGINIA_PROD \
+  --routing-policy-label vpcAttachments \
+  --region us-east-1
+
+aws networkmanager put-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_NVIRGINIA_DEV \
+  --routing-policy-label vpcAttachments \
+  --region us-east-1
 ```
 
-- Remember to clean up resoures once you are done by using `terraform destroy`.
+> **Note**: EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
 
-**Note** EC2 instances will be deployed in all the Availability Zones configured for each VPC. Keep this in mind when testing this environment from a cost perspective - for production environments, we recommend the use of at least 2 AZs for high-availability.
+## Cleanup
+
+Before destroying resources, remove the routing policy labels from VPC attachments:
+
+```bash
+# Get the Core Network ID and VPC attachment IDs
+CORE_NETWORK_ID=$(terraform output -json cloud_wan | jq -r '.core_network')
+VPC_IRELAND_PROD=$(terraform output -json vpcs | jq -r '.ireland.attachment_ids.prod')
+VPC_IRELAND_DEV=$(terraform output -json vpcs | jq -r '.ireland.attachment_ids.dev')
+VPC_NVIRGINIA_PROD=$(terraform output -json vpcs | jq -r '.nvirginia.attachment_ids.prod')
+VPC_NVIRGINIA_DEV=$(terraform output -json vpcs | jq -r '.nvirginia.attachment_ids.dev')
+
+# Remove routing policy labels
+aws networkmanager remove-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_IRELAND_PROD \
+  --routing-policy-label vpcAttachments \
+  --region eu-west-1
+
+aws networkmanager remove-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_IRELAND_DEV \
+  --routing-policy-label vpcAttachments \
+  --region eu-west-1
+
+aws networkmanager remove-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_NVIRGINIA_PROD \
+  --routing-policy-label vpcAttachments \
+  --region us-east-1
+
+aws networkmanager remove-attachment-routing-policy-label \
+  --core-network-id $CORE_NETWORK_ID \
+  --attachment-id $VPC_NVIRGINIA_DEV \
+  --routing-policy-label vpcAttachments \
+  --region us-east-1
+
+# Destroy all resources
+terraform destroy
+```
+
+## Next Steps
+
+After successfully deploying this pattern:
+
+1. **Explore the architecture**: Review routing policies and attachment associations in Network Manager console
+2. **Test connectivity**: Verify primary CIDR connectivity works, secondary CIDR is filtered
+3. **Try modifications**: Add more VPCs with secondary CIDRs, adjust filtering rules
 
 ## Requirements
 
