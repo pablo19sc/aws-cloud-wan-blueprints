@@ -17,8 +17,8 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 |---------|-------------|-------------|-------------|
 | [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform |
 | [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
-| [4. BGP Community Filtering](#3-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
-| [5. Hybrid Path Influence](#4-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
+| [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
+| [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
 
 ---
 
