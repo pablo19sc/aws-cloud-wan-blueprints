@@ -50,6 +50,7 @@ This pattern shows how you can filters secondary CIDR blocks from VPC attachment
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormaion** | [`./1-filtering_vpc_secondary_cidr_blocks/cloudformation/`](./1-filtering_vpc_secondary_cidr_blocks/cloudformation/) |
 | **Terraform** | [`./1-filtering_vpc_secondary_cidr_blocks/terraform/`](./1-filtering_vpc_secondary_cidr_blocks/terraform/) |
 
 <details>
