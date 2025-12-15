@@ -50,7 +50,7 @@ This pattern shows how you can filters secondary CIDR blocks from VPC attachment
 
 | IaC Tool | Location |
 |----------|----------|
-| **CloudFormaion** | [`./1-filtering_vpc_secondary_cidr_blocks/cloudformation/`](./1-filtering_vpc_secondary_cidr_blocks/cloudformation/) |
+| **CloudFormation** | [`./1-filtering_vpc_secondary_cidr_blocks/cloudformation/`](./1-filtering_vpc_secondary_cidr_blocks/cloudformation/) |
 | **Terraform** | [`./1-filtering_vpc_secondary_cidr_blocks/terraform/`](./1-filtering_vpc_secondary_cidr_blocks/terraform/) |
 
 <details>
@@ -186,6 +186,7 @@ This patterns shows how you can create protocol-specific segments by filtering I
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./2-filtering_ipv4_ipv6_only_segments/cloudformation/`](./2-filtering_ipv4_ipv6_only_segments/cloudformation/) |
 | **Terraform** | [`./2-filtering_ipv4_ipv6_only_segments/terraform/`](./2-filtering_ipv4_ipv6_only_segments/terraform/) |
 
 <details>
