@@ -397,6 +397,7 @@ route-map TEST-ROUTES permit 10
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./4-filtering_by_bgp_community/cloudformation/`](./4-filtering_by_bgp_community/cloudformation/) |
 | **Terraform** | [`./4-filtering_by_bgp_community/terraform/`](./4-filtering_by_bgp_community/terraform/) |
 
 <details>
