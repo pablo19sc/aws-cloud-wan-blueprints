@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: AWS Cloud WAN Simple Architecture (VPCs & workloads)
+Description: AWS Cloud WAN Filtering - IPv4 & IPv6 only segments (VPCs & workloads)
 Transform: 'AWS::LanguageExtensions'
 
 Parameters:
