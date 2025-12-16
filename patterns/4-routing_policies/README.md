@@ -19,6 +19,7 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 | [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
 | [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
 | [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
+| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
 
 ---
 
@@ -772,6 +773,234 @@ With hybrid connections in multiple AWS Regions announcing the same CIDR range, 
               {
                 "type": "asn-in-as-path",
                 "value": 65052
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                65500,
+                65501
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 6. Influencing Direct Connect Gateway (DXGW) Hybrid Path
+
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish Direct Connect connections and Virtual Interfaces (VIFs) through two Direct Connect Gateways (DXGWs) in different geographical locations, all announcing the same route prefix. The IaC code creates the Cloud WAN infrastructure and DXGWs, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
+
+This pattern shows how you can use routing policies to prefer a specific hybrid path when multiple DXGWs announce the same routes from different geographical locations. This is particularly useful if you have different DXGWs for different regional connectivity, and you want VPCs to exit through their closest Direct Connect path (defined by you) while using other Direct Connect connections as failover.
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `europevpcs`, `usvpcs`, `hybrid` |
+| **Routing Policies** | Prepend ASNs 65500, 65501 to routes from specific DXGWs |
+| **Policy Direction** | `outbound` (on segment sharing) |
+| **Direct Connect Gateways** | Europe DXGW (ASN 64512), US DXGW (ASN 64513) |
+
+### How It Works
+
+**Scenario**:
+
+- Europe DXGW (ASN 64512) and US DXGW (ASN 64513) both announce the same on-premises CIDR range
+- Goal: Make European VPCs prefer Europe DXGW path, and US VPCs prefer US DXGW path
+
+**Solution**:
+
+1. Create separate segments for European VPCs (`europevpcs`) and US VPCs (`usvpcs`)
+2. Both DXGWs attach to the `hybrid` segment
+3. When sharing routes from `hybrid` to `europevpcs`:
+   - Apply routing policy `addASPathUS` that prepends ASNs to routes from US DXGW (ASN 64513)
+   - European VPCs see longer AS-PATH via US DXGW, prefer Europe DXGW
+4. When sharing routes from `hybrid` to `usvpcs`:
+   - Apply routing policy `addASPathEurope` that prepends ASNs to routes from Europe DXGW (ASN 64512)
+   - US VPCs see longer AS-PATH via Europe DXGW, prefer US DXGW
+
+### Traffic Flow
+
+| Source | Path via Europe DXGW | Path via US DXGW | Selected Path |
+|--------|---------------------|------------------|---------------|
+| **eu-west-1 VPC** | 64512 (length: 1) | 65500, 65501, 64513 (length: 3) | ✅ Europe DXGW (shorter) |
+| **us-east-1 VPC** | 65500, 65501, 64512 (length: 3) | 64513 (length: 1) | ✅ US DXGW (shorter) |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./6-influencing_dxgw_hybrid_path/terraform/`](./6-influencing_dxgw_hybrid_path/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "europevpcs",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "usvpcs",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "hybrid",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "europevpcs"
+      ],
+      "routing-policy-names": [
+        "addASPathUS"
+      ]
+    },
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "usvpcs"
+      ],
+      "routing-policy-names": [
+        "addASPathEurope"
+      ]
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "region",
+          "operator": "equals",
+          "value": "eu-west-1"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "europevpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "region",
+          "operator": "equals",
+          "value": "us-east-1"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "usvpcs"
+      }
+    },
+    {
+      "rule-number": 300,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "direct-connect-gateway"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "hybrid"
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "addASPathEurope",
+      "routing-policy-description": "Adding extra ASNs for Europe's DXGW",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64512
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                65500,
+                65501
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "routing-policy-name": "addASPathUS",
+      "routing-policy-description": "Adding extra ASNs for US' DXGW",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 200,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64513
               }
             ],
             "condition-logic": "or",
