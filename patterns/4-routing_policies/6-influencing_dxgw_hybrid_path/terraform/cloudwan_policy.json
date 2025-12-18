@@ -54,6 +54,14 @@
       "routing-policy-names": [
         "addASPathEurope"
       ]
+    },
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "europevpcs",
+      "share-with": [
+        "usvpcs"
+      ]
     }
   ],
   "attachment-policies": [
