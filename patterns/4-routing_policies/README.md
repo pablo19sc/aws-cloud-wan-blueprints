@@ -20,6 +20,7 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 | [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
 | [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
 | [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
+| [7. Route Summarization](#7-route-summarization-for-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform |
 
 ---
 
@@ -800,6 +801,8 @@ With hybrid connections in multiple AWS Regions announcing the same CIDR range, 
 
 This pattern shows how you can use routing policies to prefer a specific hybrid path when multiple DXGWs announce the same routes from different geographical locations. This is particularly useful if you have different DXGWs for different regional connectivity, and you want VPCs to exit through their closest Direct Connect path (defined by you) while using other Direct Connect connections as failover.
 
+![Influencing DXGW hybrid path](../../images/patterns_influencing_dxgw_hybrid_path.png)
+
 ### Key Components
 
 | Component | Configuration |
@@ -1010,6 +1013,210 @@ This pattern shows how you can use routing policies to prefer a specific hybrid 
                 65500,
                 65501
               ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 7. Route Summarization (Hybrid Attachments)
+
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish hybrid connectivity (Site-to-Site VPN, Connect attachment, or Direct Connect Gateway) with BGP configuration to test end-to-end. The IaC code creates the Cloud WAN infrastructure, but you must configure your on-premises router to establish BGP sessions.
+
+This pattern demonstrates how to use Cloud WAN's route summarization capability to aggregate multiple specific routes into a single summary route when advertising to hybrid connections. This is particularly useful for reducing the size of routing tables on on-premises routers and simplifying route management.
+
+![Summarization](../../images/patterns_summarization.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development`, `hybrid` |
+| **Routing Policy** | Summarize IPv4 routes to 10.0.0.0/8 |
+| **Policy Direction** | `outbound` (to hybrid attachments) |
+
+### How It Works
+
+**Scenario**:
+
+- Multiple VPCs across regions with IPv4 CIDR blocks (10.0.0.0/24, 10.0.1.0/24, 10.10.0.0/24, 10.10.1.0/24)
+- VPCs are dual-stack with both IPv4 and IPv6 addresses
+- Goal: Advertise a single summary route (10.0.0.0/8) to on-premises instead of individual VPC CIDRs
+
+**Solution**:
+
+1. Create a managed prefix list containing all VPC IPv4 CIDR blocks
+2. Associate the prefix list with the Core Network using alias `ipv4routes`
+3. Create routing policy `summarizeIpv4Routes` that:
+   - Matches routes in the prefix list
+   - Summarizes them to 10.0.0.0/8
+4. Apply policy to hybrid attachments using routing policy label `hybridAttachment`
+5. IPv6 routes are advertised without summarization
+
+### Traffic Flow
+
+| Route Type | Without Summarization | With Summarization | Result |
+|------------|----------------------|-------------------|--------|
+| **IPv4 Routes** | 10.0.0.0/24, 10.0.1.0/24, 10.10.0.0/24, 10.10.1.0/24 | 10.0.0.0/8 | ✅ Summarized |
+| **IPv6 Routes** | Individual VPC IPv6 CIDRs | Individual VPC IPv6 CIDRs | ℹ️ Not summarized |
+
+### Important Notes
+
+1. **Prefix List Association Region**: The prefix list association MUST be created in `us-west-2` (Cloud WAN's home region), regardless of where your Core Network edge locations are deployed.
+
+2. **Routing Policy Label**: After deployment, hybrid attachments (Site-to-Site VPN, Connect, or Direct Connect Gateway) MUST have the routing policy label `hybridAttachment` added for the summarization policy to be applied.
+
+3. **Dual-Stack Behavior**: This pattern demonstrates summarization for IPv4 routes only. IPv6 routes are advertised without summarization.
+
+4. **Supported Attachment Types**: Route summarization can be applied to any hybrid attachment type that supports BGP:
+   - Site-to-Site VPN
+   - Connect attachments
+   - Direct Connect Gateway
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./7-summarization/cloudformation/`](./7-summarization/cloudformation/) |
+| **Terraform** | [`./7-summarization/terraform/`](./7-summarization/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "hybrid",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "production",
+        "development"
+      ]
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "site-to-site-vpn"
+        },
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "connect"
+        },
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "direct-connect-gateway"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "hybrid"
+      }
+    }
+  ],
+  "attachment-routing-policy-rules": [
+    {
+      "rule-number": 100,
+      "conditions": [
+        {
+          "type": "routing-policy-label",
+          "value": "hybridAttachment"
+        }
+      ],
+      "action": {
+        "associate-routing-policies": [
+          "summarizeIpv4Routes"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "summarizeIpv4Routes",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-prefix-list",
+                "value": "ipv4routes"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "summarize",
+              "value": "10.0.0.0/8"
             }
           }
         }
