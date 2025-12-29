@@ -19,8 +19,8 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 | [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
 | [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
 | [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
-| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
-| [7. Route Summarization](#7-route-summarization-for-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform |
+| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-dxgw-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
+| [7. Route Summarization](#7-route-summarization-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform |
 
 ---
 
