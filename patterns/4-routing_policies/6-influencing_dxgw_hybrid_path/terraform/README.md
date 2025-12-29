@@ -1,6 +1,8 @@
 <!-- BEGIN_TF_DOCS -->
 # AWS Cloud WAN Direct Connect Gateway (DXGW) Path Influence (Terraform)
 
+![Influencing DXGW hybrid path](../../../../images/patterns\_influencing\_dxgw\_hybrid\_path.png)
+
 > **⚠️ Hybrid Environment Required**: This pattern requires you to establish Direct Connect connections and Virtual Interfaces (VIFs) through two Direct Connect Gateways (DXGWs) in different geographical locations, both announcing the same route prefix. The IaC code creates the Cloud WAN infrastructure and DXGWs, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
 
 ## Prerequisites
