@@ -35,7 +35,7 @@ resource "aws_networkmanager_core_network_policy_attachment" "core_network_polic
   core_network_id = aws_networkmanager_core_network.core_network.id
   policy_document = file("${path.module}/cloudwan_policy.json")
 
-  depends_on = [ 
+  depends_on = [
     awscc_networkmanager_core_network_prefix_list_association.prefix_list_association,
     module.ireland_compute,
     module.nvirginia_compute
@@ -46,8 +46,8 @@ resource "aws_networkmanager_core_network_policy_attachment" "core_network_polic
 resource "awscc_networkmanager_core_network_prefix_list_association" "prefix_list_association" {
   provider = awscc.awsccoregon
 
-  core_network_id = aws_networkmanager_core_network.core_network.id
-  prefix_list_arn = aws_ec2_managed_prefix_list.ipv4_cidr_blocks.arn
+  core_network_id   = aws_networkmanager_core_network.core_network.id
+  prefix_list_arn   = aws_ec2_managed_prefix_list.ipv4_cidr_blocks.arn
   prefix_list_alias = "ipv4routes"
 }
 
