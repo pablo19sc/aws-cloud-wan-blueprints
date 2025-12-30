@@ -17,9 +17,10 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 |---------|-------------|-------------|-------------|
 | [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform, CloudFormation |
 | [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform, CloudFormation |
+| [3. Traffic Inspection After Filtering](#3-traffic-inspection-after-filtering) | Combine route filtering with service insertion | Route Filtering + Inspection | Terraform, CloudFormation |
 | [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform, CloudFormation |
-| [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
-| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-dxgw-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
+| [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform, CloudFormation |
+| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-dxgw-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform, CloudFormation |
 | [7. Route Summarization](#7-route-summarization-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform, CloudFormation |
 | [8. Filtering Peered Transit Gateways](#8-filtering-peered-transit-gateways) | Filter routes between Cloud WAN and peered TGWs | Route Filtering | Terraform, CloudFormation |
 
@@ -325,7 +326,206 @@ This patterns shows how you can create protocol-specific segments by filtering I
 
 ## 3. Traffic Inspection After Filtering
 
-> **Coming Soon**: This pattern will demonstrate how to combine routing policies with service insertion to filter routes before inspection.
+This pattern demonstrates how routing policies can be applied at the attachment layer to filter routes before applying Service Insertion rules for traffic inspection. This is particularly useful when you need to filter unwanted routes (such as secondary CIDR blocks) while still maintaining traffic inspection between segments.
+
+**Important Limitation**: Routing policies cannot be directly applied to Network Function Groups (NFGs) or service insertion flows. However, this pattern shows how to work around this limitation by applying routing policies at the attachment level before traffic enters the inspection path.
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development` |
+| **Network Function Group** | `inspectionVpcs` (for AWS Network Firewall) |
+| **Routing Policy** | Filter secondary CIDR blocks (100.64.0.0/16), allow 10.0.0.0/8 |
+| **Policy Direction** | `inbound` (at VPC attachments) |
+| **Service Insertion** | `send-via` dual-hop inspection between segments |
+
+### How It Works
+
+**Scenario**:
+
+- Production and development VPCs in two regions with primary CIDRs (10.0.0.0/8) and secondary CIDRs (100.64.0.0/16)
+- Traffic between production and development segments must be inspected by AWS Network Firewall.
+- Secondary CIDR blocks should not propagate to other segments.
+
+**Solution**:
+
+1. Apply routing policy `allowCidrRange` at VPC attachment level using routing policy label `vpcAttachments`:
+   - Allow routes in 10.0.0.0/8 range (primary CIDRs)
+   - Drop all other routes (including 100.64.0.0/16 secondary CIDRs)
+2. Create Network Function Group `inspectionVpcs` for inspection VPCs with AWS Network Firewall.
+3. Configure `send-via` segment action to route traffic from production to development through inspection VPCs.
+4. Filtered routes (primary CIDRs only) are then subject to service insertion rules.
+
+### Traffic Flow
+
+| Source | Destination | Route Type | Result | Reason |
+|--------|-------------|------------|--------|--------|
+| Production VPC (10.0.x.x) | Development VPC (10.10.x.x) | Primary CIDR | ✅ Allowed + Inspected | Route allowed by policy, then inspected via send-via |
+| Production VPC (100.64.x.x) | Development VPC | Secondary CIDR | ❌ Blocked | Secondary CIDR filtered by routing policy |
+| Development VPC (10.10.x.x) | Production VPC (10.0.x.x) | Primary CIDR | ✅ Allowed + Inspected | Route allowed by policy, then inspected via send-via |
+| Development VPC (100.64.x.x) | Production VPC | Secondary CIDR | ❌ Blocked | Secondary CIDR filtered by routing policy |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./3-inspection_after_filtering/cloudformation/`](./3-inspection_after_filtering/cloudformation/) |
+| **Terraform** | [`./3-inspection_after_filtering/terraform/`](./3-inspection_after_filtering/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "network-function-groups": [
+    {
+      "name": "inspectionVpcs",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "send-via",
+      "segment": "production",
+      "mode": "dual-hop",
+      "when-sent-to": {
+        "segments": [
+          "development"
+        ]
+      },
+      "via": {
+        "network-function-groups": [
+          "inspectionVpcs"
+        ]
+      }
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "tag-value",
+          "operator": "equals",
+          "key": "inspection",
+          "value": "true"
+        }
+      ],
+      "action": {
+        "add-to-network-function-group": "inspectionVpcs"
+      }
+    }
+  ],
+  "attachment-routing-policy-rules": [
+    {
+      "rule-number": 100,
+      "conditions": [
+        {
+          "type": "routing-policy-label",
+          "value": "vpcAttachments"
+        }
+      ],
+      "action": {
+        "associate-routing-policies": [
+          "allowCidrRange"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "allowCidrRange",
+      "routing-policy-description": "Allowing 10.0.0.0/8 CIDR range",
+      "routing-policy-direction": "inbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-cidr",
+                "value": "10.0.0.0/8"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "allow"
+            }
+          }
+        },
+        {
+          "rule-number": 200,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-cidr",
+                "value": "0.0.0.0/0"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "drop"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
 
 ---
 
@@ -650,6 +850,7 @@ With hybrid connections in multiple AWS Regions announcing the same CIDR range, 
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./5-influencing_hybrid_path_between_cnes/cloudformation/`](./5-influencing_hybrid_path_between_cnes/cloudformation/) |
 | **Terraform** | [`./5-influencing_hybrid_path_between_cnes/terraform/`](./5-influencing_hybrid_path_between_cnes/terraform/) |
 
 <details>
@@ -829,6 +1030,7 @@ This pattern shows how you can use routing policies to prefer a specific hybrid 
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./6-influencing_dxgw_hybrid_path/cloudformation/`](./6-influencing_dxgw_hybrid_path/cloudformation/) |
 | **Terraform** | [`./6-influencing_dxgw_hybrid_path/terraform/`](./6-influencing_dxgw_hybrid_path/terraform/) |
 
 <details>

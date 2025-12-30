@@ -84,16 +84,16 @@ module "ireland_spoke_vpcs" {
 }
 
 # EC2 Instances (in Spoke VPCs) and EC2 Instance Connect endpoint
-# module "ireland_compute" {
-#   for_each  = module.ireland_spoke_vpcs
-#   source    = "../../../tf_modules/compute"
-#   providers = { aws = aws.awsireland }
+module "ireland_compute" {
+  for_each  = module.ireland_spoke_vpcs
+  source    = "../../../tf_modules/compute"
+  providers = { aws = aws.awsireland }
 
-#   identifier      = var.identifier
-#   vpc_name        = each.key
-#   vpc             = each.value
-#   vpc_information = var.ireland_spoke_vpcs[each.key]
-# }
+  identifier      = var.identifier
+  vpc_name        = each.key
+  vpc             = each.value
+  vpc_information = var.ireland_spoke_vpcs[each.key]
+}
 
 # AWS Transit Gateway route table
 resource "aws_ec2_transit_gateway_route_table" "ireland_tgw_rt" {
@@ -216,16 +216,16 @@ module "nvirginia_spoke_vpcs" {
 }
 
 # EC2 Instances (in Spoke VPCs) and EC2 Instance Connect endpoint
-# module "nvirginia_compute" {
-#   for_each  = module.nvirginia_spoke_vpcs
-#   source    = "../../../tf_modules/compute"
-#   providers = { aws = aws.awsnvirginia }
+module "nvirginia_compute" {
+  for_each  = module.nvirginia_spoke_vpcs
+  source    = "../../../tf_modules/compute"
+  providers = { aws = aws.awsnvirginia }
 
-#   identifier      = var.identifier
-#   vpc_name        = each.key
-#   vpc             = each.value
-#   vpc_information = var.nvirginia_spoke_vpcs[each.key]
-# }
+  identifier      = var.identifier
+  vpc_name        = each.key
+  vpc             = each.value
+  vpc_information = var.nvirginia_spoke_vpcs[each.key]
+}
 
 # AWS Transit Gateway route table
 resource "aws_ec2_transit_gateway_route_table" "nvirginia_tgw_rt" {

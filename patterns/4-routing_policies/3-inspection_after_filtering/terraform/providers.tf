@@ -1,18 +1,18 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- patterns/4-advanced_routing/7-summarization/terraform/providers.tf ---
+# --- patterns/4-advanced_routing/3-inspection_after_filtering/terraform/providers.tf ---
 
 terraform {
   required_version = ">= 1.3.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 6.0.0"
+      version = ">= 6.27.0"
     }
     awscc = {
       source  = "hashicorp/awscc"
-      version = ">= 1.67.0"
+      version = ">= 1.0.0"
     }
   }
 }
@@ -29,13 +29,6 @@ provider "aws" {
   alias  = "awsnvirginia"
 }
 
-# Provider definition for Oregon Region
-provider "aws" {
-  region = "us-west-2"
-  alias  = "awsoregon"
-}
-
 provider "awscc" {
-  region = "us-west-2"
-  alias  = "awsccoregon"
+  region = var.aws_regions.nvirginia
 }

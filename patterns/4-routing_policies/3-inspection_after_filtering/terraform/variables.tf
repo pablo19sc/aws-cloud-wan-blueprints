@@ -1,13 +1,13 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- patterns/4-advanced_routing/7-summarization/terraform/variables.tf ---
+# --- patterns/4-advanced_routing/3-inspection_after_filtering/terraform/variables.tf ---
 
 # Project Identifier
 variable "identifier" {
   type        = string
   description = "Project Identifier, used as identifer when creating resources."
-  default     = "summarization-outbound"
+  default     = "inspection-after-filtering"
 }
 
 # AWS Regions
@@ -75,5 +75,18 @@ variable "nvirginia_spoke_vpcs" {
       cnetwork_subnet_netmask = 28
       instance_type           = "t2.micro"
     }
+  }
+}
+
+# Definition of Inspection VPC
+variable "inspection_vpc" {
+  type        = any
+  description = "Information about the Inspection VPC to create."
+
+  default = {
+    cidr_block                = "10.100.0.0/16"
+    number_azs                = 2
+    inspection_subnet_netmask = 28
+    cnetwork_subnet_netmask   = 28
   }
 }
