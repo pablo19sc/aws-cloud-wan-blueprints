@@ -1,5 +1,7 @@
 # AWS Cloud WAN Traffic Inspection After Filtering (AWS CloudFormation)
 
+![Inspection after Filtering](../../../../images/patterns_inspection_after_filtering.png)
+
 ## Prerequisites
 
 - **AWS Account**: With appropriate IAM permissions

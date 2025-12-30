@@ -330,6 +330,8 @@ This pattern demonstrates how routing policies can be applied at the attachment 
 
 **Important Limitation**: Routing policies cannot be directly applied to Network Function Groups (NFGs) or service insertion flows. However, this pattern shows how to work around this limitation by applying routing policies at the attachment level before traffic enters the inspection path.
 
+![Inspection after Filtering](../../images/patterns_inspection_after_filtering.png)
+
 ### Key Components
 
 | Component | Configuration |
