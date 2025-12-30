@@ -257,28 +257,14 @@ This patterns shows how you can create protocol-specific segments by filtering I
       "action": "share",
       "mode": "attachment-route",
       "segment": "ipv4only",
-      "share-with": ["production"],
-      "routing-policy-names": ["filterIpv6"]
-    },
-    {
-      "action": "share",
-      "mode": "attachment-route",
-      "segment": "ipv4only",
-      "share-with": ["development"],
+      "share-with": ["production", "development"],
       "routing-policy-names": ["filterIpv6"]
     },
     {
       "action": "share",
       "mode": "attachment-route",
       "segment": "ipv6only",
-      "share-with": ["production"],
-      "routing-policy-names": ["filterIpv4"]
-    },
-    {
-      "action": "share",
-      "mode": "attachment-route",
-      "segment": "ipv6only",
-      "share-with": ["development"],
+      "share-with": ["production", "development"],
       "routing-policy-names": ["filterIpv4"]
     }
   ],
