@@ -15,10 +15,13 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 
 | Pattern | Description | Policy Type | IaC Support |
 |---------|-------------|-------------|-------------|
-| [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform |
-| [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
-| [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
+| [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform, CloudFormation |
+| [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform, CloudFormation |
+| [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform, CloudFormation |
 | [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
+| [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-dxgw-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
+| [7. Route Summarization](#7-route-summarization-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform, CloudFormation |
+| [8. Filtering Peered Transit Gateways](#8-filtering-peered-transit-gateways) | Filter routes between Cloud WAN and peered TGWs | Route Filtering | Terraform, CloudFormation |
 
 ---
 
@@ -50,6 +53,7 @@ This pattern shows how you can filters secondary CIDR blocks from VPC attachment
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./1-filtering_vpc_secondary_cidr_blocks/cloudformation/`](./1-filtering_vpc_secondary_cidr_blocks/cloudformation/) |
 | **Terraform** | [`./1-filtering_vpc_secondary_cidr_blocks/terraform/`](./1-filtering_vpc_secondary_cidr_blocks/terraform/) |
 
 <details>
@@ -185,6 +189,7 @@ This patterns shows how you can create protocol-specific segments by filtering I
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./2-filtering_ipv4_ipv6_only_segments/cloudformation/`](./2-filtering_ipv4_ipv6_only_segments/cloudformation/) |
 | **Terraform** | [`./2-filtering_ipv4_ipv6_only_segments/terraform/`](./2-filtering_ipv4_ipv6_only_segments/terraform/) |
 
 <details>
@@ -253,28 +258,14 @@ This patterns shows how you can create protocol-specific segments by filtering I
       "action": "share",
       "mode": "attachment-route",
       "segment": "ipv4only",
-      "share-with": ["production"],
-      "routing-policy-names": ["filterIpv6"]
-    },
-    {
-      "action": "share",
-      "mode": "attachment-route",
-      "segment": "ipv4only",
-      "share-with": ["development"],
+      "share-with": ["production", "development"],
       "routing-policy-names": ["filterIpv6"]
     },
     {
       "action": "share",
       "mode": "attachment-route",
       "segment": "ipv6only",
-      "share-with": ["production"],
-      "routing-policy-names": ["filterIpv4"]
-    },
-    {
-      "action": "share",
-      "mode": "attachment-route",
-      "segment": "ipv6only",
-      "share-with": ["development"],
+      "share-with": ["production", "development"],
       "routing-policy-names": ["filterIpv4"]
     }
   ],
@@ -395,6 +386,7 @@ route-map TEST-ROUTES permit 10
 
 | IaC Tool | Location |
 |----------|----------|
+| **CloudFormation** | [`./4-filtering_by_bgp_community/cloudformation/`](./4-filtering_by_bgp_community/cloudformation/) |
 | **Terraform** | [`./4-filtering_by_bgp_community/terraform/`](./4-filtering_by_bgp_community/terraform/) |
 
 <details>
@@ -778,6 +770,603 @@ With hybrid connections in multiple AWS Regions announcing the same CIDR range, 
                 65500,
                 65501
               ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 6. Influencing Direct Connect Gateway (DXGW) Hybrid Path
+
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish Direct Connect connections and Virtual Interfaces (VIFs) through two Direct Connect Gateways (DXGWs) in different geographical locations, all announcing the same route prefix. The IaC code creates the Cloud WAN infrastructure and DXGWs, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
+
+This pattern shows how you can use routing policies to prefer a specific hybrid path when multiple DXGWs announce the same routes from different geographical locations. This is particularly useful if you have different DXGWs for different regional connectivity, and you want VPCs to exit through their closest Direct Connect path (defined by you) while using other Direct Connect connections as failover.
+
+![Influencing DXGW hybrid path](../../images/patterns_influencing_dxgw_hybrid_path.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `europevpcs`, `usvpcs`, `hybrid` |
+| **Routing Policies** | Prepend ASNs 65500, 65501 to routes from specific DXGWs |
+| **Policy Direction** | `outbound` (on segment sharing) |
+| **Direct Connect Gateways** | Europe DXGW (ASN 64512), US DXGW (ASN 64513) |
+
+### How It Works
+
+**Scenario**:
+
+- Europe DXGW (ASN 64512) and US DXGW (ASN 64513) both announce the same on-premises CIDR range
+- Goal: Make European VPCs prefer Europe DXGW path, and US VPCs prefer US DXGW path
+
+**Solution**:
+
+1. Create separate segments for European VPCs (`europevpcs`) and US VPCs (`usvpcs`)
+2. Both DXGWs attach to the `hybrid` segment
+3. When sharing routes from `hybrid` to `europevpcs`:
+   - Apply routing policy `addASPathUS` that prepends ASNs to routes from US DXGW (ASN 64513)
+   - European VPCs see longer AS-PATH via US DXGW, prefer Europe DXGW
+4. When sharing routes from `hybrid` to `usvpcs`:
+   - Apply routing policy `addASPathEurope` that prepends ASNs to routes from Europe DXGW (ASN 64512)
+   - US VPCs see longer AS-PATH via Europe DXGW, prefer US DXGW
+
+### Traffic Flow
+
+| Source | Path via Europe DXGW | Path via US DXGW | Selected Path |
+|--------|---------------------|------------------|---------------|
+| **eu-west-1 VPC** | 64512 (length: 1) | 65500, 65501, 64513 (length: 3) | ✅ Europe DXGW (shorter) |
+| **us-east-1 VPC** | 65500, 65501, 64512 (length: 3) | 64513 (length: 1) | ✅ US DXGW (shorter) |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **Terraform** | [`./6-influencing_dxgw_hybrid_path/terraform/`](./6-influencing_dxgw_hybrid_path/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "europevpcs",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "usvpcs",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "hybrid",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "europevpcs"
+      ],
+      "routing-policy-names": [
+        "addASPathUS"
+      ]
+    },
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "usvpcs"
+      ],
+      "routing-policy-names": [
+        "addASPathEurope"
+      ]
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "region",
+          "operator": "equals",
+          "value": "eu-west-1"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "europevpcs"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "region",
+          "operator": "equals",
+          "value": "us-east-1"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "usvpcs"
+      }
+    },
+    {
+      "rule-number": 300,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "direct-connect-gateway"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "hybrid"
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "addASPathEurope",
+      "routing-policy-description": "Adding extra ASNs for Europe's DXGW",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64512
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                65500,
+                65501
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "routing-policy-name": "addASPathUS",
+      "routing-policy-description": "Adding extra ASNs for US' DXGW",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 200,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "asn-in-as-path",
+                "value": 64513
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "prepend-asn-list",
+              "value": [
+                65500,
+                65501
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 7. Route Summarization (Hybrid Attachments)
+
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish hybrid connectivity (Site-to-Site VPN, Connect attachment, or Direct Connect Gateway) with BGP configuration to test end-to-end. The IaC code creates the Cloud WAN infrastructure, but you must configure your on-premises router to establish BGP sessions.
+
+This pattern demonstrates how to use Cloud WAN's route summarization capability to aggregate multiple specific routes into a single summary route when advertising to hybrid connections. This is particularly useful for reducing the size of routing tables on on-premises routers and simplifying route management.
+
+![Summarization](../../images/patterns_summarization.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `production`, `development`, `hybrid` |
+| **Routing Policy** | Summarize IPv4 routes to 10.0.0.0/8 |
+| **Policy Direction** | `outbound` (to hybrid attachments) |
+
+### How It Works
+
+**Scenario**:
+
+- Multiple VPCs across regions with IPv4 CIDR blocks (10.0.0.0/24, 10.0.1.0/24, 10.10.0.0/24, 10.10.1.0/24)
+- VPCs are dual-stack with both IPv4 and IPv6 addresses
+- Goal: Advertise a single summary route (10.0.0.0/8) to on-premises instead of individual VPC CIDRs
+
+**Solution**:
+
+1. Create a managed prefix list containing all VPC IPv4 CIDR blocks
+2. Associate the prefix list with the Core Network using alias `ipv4routes`
+3. Create routing policy `summarizeIpv4Routes` that:
+   - Matches routes in the prefix list
+   - Summarizes them to 10.0.0.0/8
+4. Apply policy to hybrid attachments using routing policy label `hybridAttachment`
+5. IPv6 routes are advertised without summarization
+
+### Traffic Flow
+
+| Route Type | Without Summarization | With Summarization | Result |
+|------------|----------------------|-------------------|--------|
+| **IPv4 Routes** | 10.0.0.0/24, 10.0.1.0/24, 10.10.0.0/24, 10.10.1.0/24 | 10.0.0.0/8 | ✅ Summarized |
+| **IPv6 Routes** | Individual VPC IPv6 CIDRs | Individual VPC IPv6 CIDRs | ℹ️ Not summarized |
+
+### Important Notes
+
+1. **Prefix List Association Region**: The prefix list association MUST be created in `us-west-2` (Cloud WAN's home region), regardless of where your Core Network edge locations are deployed.
+
+2. **Routing Policy Label**: After deployment, hybrid attachments (Site-to-Site VPN, Connect, or Direct Connect Gateway) MUST have the routing policy label `hybridAttachment` added for the summarization policy to be applied.
+
+3. **Dual-Stack Behavior**: This pattern demonstrates summarization for IPv4 routes only. IPv6 routes are advertised without summarization.
+
+4. **Supported Attachment Types**: Route summarization can be applied to any hybrid attachment type that supports BGP:
+   - Site-to-Site VPN
+   - Connect attachments
+   - Direct Connect Gateway
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./7-summarization/cloudformation/`](./7-summarization/cloudformation/) |
+| **Terraform** | [`./7-summarization/terraform/`](./7-summarization/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "production",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "development",
+      "require-attachment-acceptance": false
+    },
+    {
+      "name": "hybrid",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "segment-actions": [
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "hybrid",
+      "share-with": [
+        "production",
+        "development"
+      ]
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "vpc"
+        },
+        {
+          "type": "tag-exists",
+          "key": "domain"
+        }
+      ],
+      "action": {
+        "association-method": "tag",
+        "tag-value-of-key": "domain"
+      }
+    },
+    {
+      "rule-number": 200,
+      "condition-logic": "or",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "site-to-site-vpn"
+        },
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "connect"
+        },
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "direct-connect-gateway"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "hybrid"
+      }
+    }
+  ],
+  "attachment-routing-policy-rules": [
+    {
+      "rule-number": 100,
+      "conditions": [
+        {
+          "type": "routing-policy-label",
+          "value": "hybridAttachment"
+        }
+      ],
+      "action": {
+        "associate-routing-policies": [
+          "summarizeIpv4Routes"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "summarizeIpv4Routes",
+      "routing-policy-direction": "outbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-prefix-list",
+                "value": "ipv4routes"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "summarize",
+              "value": "10.0.0.0/8"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 8. Filtering Peered Transit Gateways
+
+This pattern demonstrates how Cloud WAN routing policies can be used to apply advanced routing capabilities when peering Transit Gateways with Cloud WAN. As an example, this pattern shows how to filter IPv4 routes while allowing only IPv6 connectivity between AWS Regions through peered Transit Gateways.
+
+When migrating from Transit Gateway-based architectures to Cloud WAN, you may need to maintain existing Transit Gateway infrastructure while gradually transitioning workloads. This pattern enables you to control which routes are exchanged between Cloud WAN and peered Transit Gateways, allowing for protocol-specific connectivity or selective route filtering during migration phases.
+
+![Filtering Peered TGWs](../../images/patterns_filtering_peered_tgws.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `legacy` (for Transit Gateway attachments) |
+| **Transit Gateways** | One in each region with dual-stack VPCs |
+| **Routing Policy** | Filter all IPv4 routes (0.0.0.0/0) |
+| **Policy Direction** | `inbound` (from TGW to Cloud WAN) |
+| **Policy Association** | Applied via routing policy label `tgwAttachment` |
+
+### How It Works
+
+**Scenario**:
+
+- Transit Gateways in us-east-1 and eu-west-1 are peered with Cloud WAN.
+- Each Transit Gateway has dual-stack VPCs (IPv4 and IPv6) attached.
+- Goal: Allow only IPv6 connectivity between regions through Cloud WAN, blocking all IPv4 routes.
+
+**Solution**:
+
+1. Create Transit Gateway peerings with Cloud WAN in both regions.
+2. Attach Transit Gateway route tables to Cloud WAN using TGW route table attachments.
+3. Apply routing policy label `tgwAttachment` to the TGW route table attachments.
+4. Create routing policy `filterIPv4` that:
+   - Matches all IPv4 routes using `prefix-in-cidr` (0.0.0.0/0)
+   - Drops matched routes with `type: drop` action.
+5. Associate the policy with attachments having the `tgwAttachment` label.
+6. IPv6 routes pass through unfiltered, enabling cross-region IPv6 connectivity.
+
+### Traffic Flow
+
+| Source | Destination | Protocol | Result | Reason |
+|--------|-------------|----------|--------|--------|
+| us-east-1 VPC | eu-west-1 VPC | IPv4 | ❌ Blocked | IPv4 routes filtered by routing policy |
+| us-east-1 VPC | eu-west-1 VPC | IPv6 | ✅ Allowed | IPv6 routes not matched by filter |
+| eu-west-1 VPC | us-east-1 VPC | IPv4 | ❌ Blocked | IPv4 routes filtered by routing policy |
+| eu-west-1 VPC | us-east-1 VPC | IPv6 | ✅ Allowed | IPv6 routes not matched by filter |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./8-filtering_peered_tgw/cloudformation/`](./8-filtering_peered_tgw/cloudformation/) |
+| **Terraform** | [`./8-filtering_peered_tgw/terraform/`](./8-filtering_peered_tgw/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "legacy",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "transit-gateway-route-table"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "legacy"
+      }
+    }
+  ],
+  "attachment-routing-policy-rules": [
+    {
+      "rule-number": 100,
+      "conditions": [
+        {
+          "type": "routing-policy-label",
+          "value": "tgwAttachment"
+        }
+      ],
+      "action": {
+        "associate-routing-policies": [
+          "filterIPv4"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "filterIPv4",
+      "routing-policy-description": "Filtering all IPv4 ranges",
+      "routing-policy-direction": "inbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-cidr",
+                "value": "0.0.0.0/0"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "drop"
+            }
+          }
+        },
+        {
+          "rule-number": 200,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-equals",
+                "value": "0.0.0.0/0"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "drop"
             }
           }
         }
