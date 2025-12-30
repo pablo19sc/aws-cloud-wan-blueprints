@@ -1,6 +1,8 @@
 <!-- BEGIN_TF_DOCS -->
 # AWS Cloud WAN Traffic Inspection After Filtering (Terraform)
 
+![Inspection after Filtering](../../../../images/patterns\_inspection\_after\_filtering.png)
+
 ## Prerequisites
 
 - **AWS Account**: With appropriate IAM permissions
