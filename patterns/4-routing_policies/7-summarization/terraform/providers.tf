@@ -1,7 +1,7 @@
 /* Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  SPDX-License-Identifier: MIT-0 */
 
-# --- patterns/4-advanced_routing/2-filtering_ipv4_ipv6_only_segments/terraform/providers.tf ---
+# --- patterns/4-advanced_routing/7-summarization/terraform/providers.tf ---
 
 terraform {
   required_version = ">= 1.3.0"
