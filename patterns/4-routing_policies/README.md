@@ -15,12 +15,13 @@ This section demonstrates advanced routing policy capabilities in AWS Cloud WAN,
 
 | Pattern | Description | Policy Type | IaC Support |
 |---------|-------------|-------------|-------------|
-| [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform |
-| [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform |
-| [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform |
+| [1. Filtering Secondary CIDR Blocks](#1-filtering-secondary-cidr-blocks-in-vpc-attachments) | Filter internal VPC CIDR blocks from propagation | Route Filtering | Terraform, CloudFormation |
+| [2. IPv4/IPv6 Segment Separation](#2-creating-ipv4-and-ipv6-only-segments) | Create protocol-specific segments | Route Filtering | Terraform, CloudFormation |
+| [4. BGP Community Filtering](#4-filtering-routes-using-bgp-communities) | Segment hybrid traffic by BGP community | Route Filtering + BGP | Terraform, CloudFormation |
 | [5. Hybrid Path Influence](#5-influencing-hybrid-path-between-aws-regions) | Control inter-region traffic paths | Path Preferences | Terraform |
 | [6. Direct Connect Gateway Path Influence](#6-influencing-direct-connect-gateway-dxgw-hybrid-path) | Prefer specific DXGW paths for regional traffic | Path Preferences | Terraform |
-| [7. Route Summarization](#7-route-summarization-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform |
+| [7. Route Summarization](#7-route-summarization-hybrid-attachments) | Summarize routes advertised to hybrid connections | Route Summarization | Terraform, CloudFormation |
+| [8. Filtering Peered Transit Gateways](#8-filtering-peered-transit-gateways) | Filter routes between Cloud WAN and peered TGWs | Route Filtering | Terraform, CloudFormation |
 
 ---
 
@@ -1203,6 +1204,169 @@ This pattern demonstrates how to use Cloud WAN's route summarization capability 
             "action": {
               "type": "summarize",
               "value": "10.0.0.0/8"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+</details>
+
+---
+
+## 8. Filtering Peered Transit Gateways
+
+This pattern demonstrates how Cloud WAN routing policies can be used to apply advanced routing capabilities when peering Transit Gateways with Cloud WAN. As an example, this pattern shows how to filter IPv4 routes while allowing only IPv6 connectivity between AWS Regions through peered Transit Gateways.
+
+When migrating from Transit Gateway-based architectures to Cloud WAN, you may need to maintain existing Transit Gateway infrastructure while gradually transitioning workloads. This pattern enables you to control which routes are exchanged between Cloud WAN and peered Transit Gateways, allowing for protocol-specific connectivity or selective route filtering during migration phases.
+
+![Filtering Peered TGWs](../../images/patterns_filtering_peered_tgws.png)
+
+### Key Components
+
+| Component | Configuration |
+|-----------|---------------|
+| **Regions** | us-east-1, eu-west-1 |
+| **Segments** | `legacy` (for Transit Gateway attachments) |
+| **Transit Gateways** | One in each region with dual-stack VPCs |
+| **Routing Policy** | Filter all IPv4 routes (0.0.0.0/0) |
+| **Policy Direction** | `inbound` (from TGW to Cloud WAN) |
+| **Policy Association** | Applied via routing policy label `tgwAttachment` |
+
+### How It Works
+
+**Scenario**:
+
+- Transit Gateways in us-east-1 and eu-west-1 are peered with Cloud WAN.
+- Each Transit Gateway has dual-stack VPCs (IPv4 and IPv6) attached.
+- Goal: Allow only IPv6 connectivity between regions through Cloud WAN, blocking all IPv4 routes.
+
+**Solution**:
+
+1. Create Transit Gateway peerings with Cloud WAN in both regions.
+2. Attach Transit Gateway route tables to Cloud WAN using TGW route table attachments.
+3. Apply routing policy label `tgwAttachment` to the TGW route table attachments.
+4. Create routing policy `filterIPv4` that:
+   - Matches all IPv4 routes using `prefix-in-cidr` (0.0.0.0/0)
+   - Drops matched routes with `type: drop` action.
+5. Associate the policy with attachments having the `tgwAttachment` label.
+6. IPv6 routes pass through unfiltered, enabling cross-region IPv6 connectivity.
+
+### Traffic Flow
+
+| Source | Destination | Protocol | Result | Reason |
+|--------|-------------|----------|--------|--------|
+| us-east-1 VPC | eu-west-1 VPC | IPv4 | ❌ Blocked | IPv4 routes filtered by routing policy |
+| us-east-1 VPC | eu-west-1 VPC | IPv6 | ✅ Allowed | IPv6 routes not matched by filter |
+| eu-west-1 VPC | us-east-1 VPC | IPv4 | ❌ Blocked | IPv4 routes filtered by routing policy |
+| eu-west-1 VPC | us-east-1 VPC | IPv6 | ✅ Allowed | IPv6 routes not matched by filter |
+
+### Implementation
+
+| IaC Tool | Location |
+|----------|----------|
+| **CloudFormation** | [`./8-filtering_peered_tgw/cloudformation/`](./8-filtering_peered_tgw/cloudformation/) |
+| **Terraform** | [`./8-filtering_peered_tgw/terraform/`](./8-filtering_peered_tgw/terraform/) |
+
+<details>
+<summary>View Network Policy</summary>
+
+```json
+{
+  "version": "2025.11",
+  "core-network-configuration": {
+    "vpn-ecmp-support": true,
+    "dns-support": true,
+    "security-group-referencing-support": true,
+    "asn-ranges": [
+      "65000-65003"
+    ],
+    "edge-locations": [
+      {
+        "location": "us-east-1",
+        "asn": 65000
+      },
+      {
+        "location": "eu-west-1",
+        "asn": 65001
+      }
+    ]
+  },
+  "segments": [
+    {
+      "name": "legacy",
+      "require-attachment-acceptance": false
+    }
+  ],
+  "attachment-policies": [
+    {
+      "rule-number": 100,
+      "condition-logic": "and",
+      "conditions": [
+        {
+          "type": "attachment-type",
+          "operator": "equals",
+          "value": "transit-gateway-route-table"
+        }
+      ],
+      "action": {
+        "association-method": "constant",
+        "segment": "legacy"
+      }
+    }
+  ],
+  "attachment-routing-policy-rules": [
+    {
+      "rule-number": 100,
+      "conditions": [
+        {
+          "type": "routing-policy-label",
+          "value": "tgwAttachment"
+        }
+      ],
+      "action": {
+        "associate-routing-policies": [
+          "filterIPv4"
+        ]
+      }
+    }
+  ],
+  "routing-policies": [
+    {
+      "routing-policy-name": "filterIPv4",
+      "routing-policy-description": "Filtering all IPv4 ranges",
+      "routing-policy-direction": "inbound",
+      "routing-policy-number": 100,
+      "routing-policy-rules": [
+        {
+          "rule-number": 100,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-in-cidr",
+                "value": "0.0.0.0/0"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "drop"
+            }
+          }
+        },
+        {
+          "rule-number": 200,
+          "rule-definition": {
+            "match-conditions": [
+              {
+                "type": "prefix-equals",
+                "value": "0.0.0.0/0"
+              }
+            ],
+            "condition-logic": "or",
+            "action": {
+              "type": "drop"
             }
           }
         }
