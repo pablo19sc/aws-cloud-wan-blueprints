@@ -32,7 +32,6 @@
       "require-attachment-acceptance": false
     }
   ],
-  "network-function-groups": [],
   "segment-actions": [
     {
       "action": "share",

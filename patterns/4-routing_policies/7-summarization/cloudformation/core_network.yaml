@@ -74,6 +74,9 @@ Resources:
               - development
         attachment-routing-policy-rules:
           - rule-number: 100
+            edge-locations:
+              - us-east-1
+              - eu-west-1
             conditions:
               - type: routing-policy-label
                 value: hybridAttachment
