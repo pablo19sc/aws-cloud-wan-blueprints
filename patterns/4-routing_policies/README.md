@@ -987,9 +987,11 @@ With hybrid connections in multiple AWS Regions announcing the same CIDR range, 
 
 ## 6. Influencing Direct Connect Gateway (DXGW) Hybrid Path
 
-> **⚠️ Hybrid Environment Required**: This pattern requires you to establish Direct Connect connections and Virtual Interfaces (VIFs) through two Direct Connect Gateways (DXGWs) in different geographical locations, all announcing the same route prefix. The IaC code creates the Cloud WAN infrastructure and DXGWs, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
+> **⚠️ Hybrid Environment Required**: This pattern requires you to establish Direct Connect connections and Virtual Interfaces (VIFs) through two Direct Connect Gateways (DXGWs) in different geographical locations, all announcing the same route prefix. We recommend for the DXGWs to be attached to all Core Network Edges (CNEs) in the Cloud WAN core network. The IaC code creates the Cloud WAN infrastructure and DXGWs, but you must configure your on-premises routers to establish BGP sessions and advertise routes.
 
 This pattern shows how you can use routing policies to prefer a specific hybrid path when multiple DXGWs announce the same routes from different geographical locations. This is particularly useful if you have different DXGWs for different regional connectivity, and you want VPCs to exit through their closest Direct Connect path (defined by you) while using other Direct Connect connections as failover.
+
+**Architecture Note**: In this example, both DXGWs (Europe DXGW and US DXGW) are attached to **all CNEs** in the Cloud WAN core network. This differs from an alternative approach where each DXGW is associated with only a geographically aligned subset of CNEs (as described in [this AWS blog](https://aws.amazon.com/blogs/networking-and-content-delivery/simplify-global-hybrid-connectivity-with-aws-cloud-wan-and-aws-direct-connect-integration/)). By attaching both DXGWs to all CNEs, we use **routing policies with AS-PATH prepending** to influence path selection, rather than relying on CNE association scope. With this approach, each VIF learns the prefixes from all regions, rather than only from geographically aligned regions.
 
 ![Influencing DXGW hybrid path](../../images/patterns_influencing_dxgw_hybrid_path.png)
 
@@ -1094,6 +1096,14 @@ This pattern shows how you can use routing policies to prefer a specific hybrid 
       ],
       "routing-policy-names": [
         "addASPathEurope"
+      ]
+    },
+    {
+      "action": "share",
+      "mode": "attachment-route",
+      "segment": "europevpcs",
+      "share-with": [
+        "usvpcs"
       ]
     }
   ],
