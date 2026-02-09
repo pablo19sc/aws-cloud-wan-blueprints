@@ -5,29 +5,29 @@
 
 # ---------- AWS CLOUD WAN RESOURCES ----------
 # Global Network
-resource "aws_networkmanager_global_network" "global_network" {
-  provider = aws.awsnvirginia
+resource "awscc_networkmanager_global_network" "global_network" {
+  provider = awscc.awsccnvirginia
 
   description = "Global Network - ${var.identifier}"
 
-  tags = {
-    Name = "Global Network - ${var.identifier}"
-  }
+  tags = [{
+    key   = "Name"
+    value = "Global Network - ${var.identifier}"
+  }]
 }
 
 # Core Network
-resource "aws_networkmanager_core_network" "core_network" {
-  provider = aws.awsnvirginia
+resource "awscc_networkmanager_core_network" "core_network" {
+  provider = awscc.awsccnvirginia
 
+  global_network_id = awscc_networkmanager_global_network.global_network.id
   description       = "Core Network - ${var.identifier}"
-  global_network_id = aws_networkmanager_global_network.global_network.id
+  policy_document   = data.aws_networkmanager_core_network_policy_document.policy.json
 
-  create_base_policy   = true
-  base_policy_document = data.aws_networkmanager_core_network_policy_document.policy.json
-
-  tags = {
-    Name = "Core Network - ${var.identifier}"
-  }
+  tags = [{
+    key   = "Name"
+    value = "Core Network - ${var.identifier}"
+  }]
 }
 
 # ---------- RESOURCES IN IRELAND ----------
@@ -35,7 +35,7 @@ resource "aws_networkmanager_core_network" "core_network" {
 module "ireland_spoke_vpcs" {
   for_each  = var.ireland_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
+  version   = "= 4.7.3"
   providers = { aws = aws.awsireland }
 
   name       = each.key
@@ -57,10 +57,10 @@ module "ireland_spoke_vpcs" {
 # Inspection VPC - definition in variables.tf
 module "ireland_inspection_vpc" {
   source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
+  version   = "3.4.0"
   providers = { aws = aws.awsireland }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {
@@ -105,7 +105,7 @@ module "ireland_transit_gateway" {
 
   identifier      = var.identifier
   tgw_asn         = var.aws_regions.ireland.tgw_asn
-  core_network_id = aws_networkmanager_core_network.core_network.id
+  core_network_id = awscc_networkmanager_core_network.core_network.core_network_id
   vpc_information = { for k, v in module.ireland_spoke_vpcs : k => {
     segment                       = var.ireland_spoke_vpcs[k].segment
     transit_gateway_attachment_id = v.transit_gateway_attachment_id
@@ -129,7 +129,7 @@ module "ireland_compute" {
 module "nvirginia_spoke_vpcs" {
   for_each  = var.nvirginia_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
+  version   = "= 4.7.3"
   providers = { aws = aws.awsnvirginia }
 
   name       = each.key
@@ -151,10 +151,10 @@ module "nvirginia_spoke_vpcs" {
 # Inspection VPC - definition in variables.tf
 module "nvirginia_inspection_vpc" {
   source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
+  version   = "3.4.0"
   providers = { aws = aws.awsnvirginia }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {
@@ -199,7 +199,7 @@ module "nvirginia_transit_gateway" {
 
   identifier      = var.identifier
   tgw_asn         = var.aws_regions.nvirginia.tgw_asn
-  core_network_id = aws_networkmanager_core_network.core_network.id
+  core_network_id = awscc_networkmanager_core_network.core_network.core_network_id
   vpc_information = { for k, v in module.nvirginia_spoke_vpcs : k => {
     segment                       = var.nvirginia_spoke_vpcs[k].segment
     transit_gateway_attachment_id = v.transit_gateway_attachment_id
@@ -223,7 +223,7 @@ module "nvirginia_compute" {
 module "sydney_spoke_vpcs" {
   for_each  = var.sydney_spoke_vpcs
   source    = "aws-ia/vpc/aws"
-  version   = "= 4.4.2"
+  version   = "= 4.7.3"
   providers = { aws = aws.awssydney }
 
   name       = each.key
@@ -245,10 +245,10 @@ module "sydney_spoke_vpcs" {
 # Inspection VPC - definition in variables.tf
 module "sydney_inspection_vpc" {
   source    = "aws-ia/cloudwan/aws"
-  version   = "3.2.0"
+  version   = "3.4.0"
   providers = { aws = aws.awssydney }
 
-  core_network_arn = aws_networkmanager_core_network.core_network.arn
+  core_network_arn = awscc_networkmanager_core_network.core_network.core_network_arn
 
   central_vpcs = {
     inspection = {
@@ -293,7 +293,7 @@ module "sydney_transit_gateway" {
 
   identifier      = var.identifier
   tgw_asn         = var.aws_regions.sydney.tgw_asn
-  core_network_id = aws_networkmanager_core_network.core_network.id
+  core_network_id = awscc_networkmanager_core_network.core_network.core_network_id
   vpc_information = { for k, v in module.sydney_spoke_vpcs : k => {
     segment                       = var.sydney_spoke_vpcs[k].segment
     transit_gateway_attachment_id = v.transit_gateway_attachment_id
