@@ -20,7 +20,8 @@ resource "aws_ec2_transit_gateway" "transit_gateway" {
 
 # Transit Gateway route tables
 locals {
-  route_tables = ["production", "prod_routes", "development"]
+  #route_tables = ["production", "prod_routes", "development"]
+  route_tables = ["rt"]
 }
 
 resource "aws_ec2_transit_gateway_route_table" "tgw_route_table" {
@@ -38,7 +39,8 @@ resource "aws_ec2_transit_gateway_route_table_association" "tgw_association" {
   for_each = var.vpc_information
 
   transit_gateway_attachment_id  = each.value.transit_gateway_attachment_id
-  transit_gateway_route_table_id = each.value.segment == "production" ? aws_ec2_transit_gateway_route_table.tgw_route_table["production"].id : aws_ec2_transit_gateway_route_table.tgw_route_table["development"].id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.tgw_route_table["rt"].id
+  #transit_gateway_route_table_id = each.value.segment == "production" ? aws_ec2_transit_gateway_route_table.tgw_route_table["production"].id : aws_ec2_transit_gateway_route_table.tgw_route_table["development"].id
 }
 
 # Transit Gateway Propagations
@@ -46,7 +48,8 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "tgw_propagation" {
   for_each = var.vpc_information
 
   transit_gateway_attachment_id  = each.value.transit_gateway_attachment_id
-  transit_gateway_route_table_id = each.value.segment == "production" ? aws_ec2_transit_gateway_route_table.tgw_route_table["prod_routes"].id : aws_ec2_transit_gateway_route_table.tgw_route_table["development"].id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.tgw_route_table["rt"].id
+  #transit_gateway_route_table_id = each.value.segment == "production" ? aws_ec2_transit_gateway_route_table.tgw_route_table["prod_routes"].id : aws_ec2_transit_gateway_route_table.tgw_route_table["development"].id
 }
 
 # ---------- CLOUD WAN PEERING ----------
