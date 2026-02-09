@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 5.67.0"
     }
+    awscc = {
+      source  = "hashicorp/awscc"
+      version = ">= 1.0.0"
+    }
   }
 }
 
@@ -23,6 +27,11 @@ provider "aws" {
 provider "aws" {
   region = var.aws_regions.nvirginia.code
   alias  = "awsnvirginia"
+}
+
+provider "awscc" {
+  region = var.aws_regions.nvirginia.code
+  alias  = "awsccnvirginia"
 }
 
 # Provider definition for Sydney Region
