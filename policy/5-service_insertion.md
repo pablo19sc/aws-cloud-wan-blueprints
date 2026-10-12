@@ -121,8 +121,10 @@ The segment whose traffic enters the inspection path — the **source**. Whateve
 
 Whether `when-sent-to` includes the source segment itself determines whether isolation is needed:
 
-- **Intra-segment** (`"*"`, `segment`'s own name in the list, or `when-sent-to` omitted entirely): requires [`isolate-attachments: true`](./2-segments-and-nfg.md#isolate-attachments) on the source segment. Without it, segment's route table has a direct route between attachments — the NFG never sees the traffic.
+- **Intra-segment** (`"*"`, `segment`'s own name in the list, or `when-sent-to` omitted entirely): requires [`isolate-attachments: true`](./2-segments-and-nfg.md#isolate-attachments) on the source segment. Without it, the policy version is **rejected at validation** and never becomes LIVE — the segment's route table would otherwise hold a direct route between attachments that bypasses the NFG.
 - **Inter-segment only** (lists segments other than the source): no isolation needed. There is no direct route between segments to begin with, so there is nothing to bypass.
+
+A `send-via` that opens reachability between two segments is gated by their [`allow-filter` / `deny-filter`](./2-segments-and-nfg.md#deny-filter-and-allow-filter), exactly as a `share` is: the inspected path appears only where each segment's filter accepts the other. If a filter excludes the other segment, the action stays in the policy but the routes never appear.
 
 ### `via`
 
@@ -154,6 +156,8 @@ Names the network function group traffic is redirected through, and — when a c
 | `edge-sets` | A Region pair — source and destination of the flow being overridden |
 | `use-edge-location` | The Region that inspects both directions of that pair |
 | Single-Region `edge-sets` (e.g. `[["eu-west-2"]]`) | Traffic starting and ending in that Region — used when it has no local inspection VPC |
+
+Each flow matches on the number of Regions in the set: a same-Region flow matches a single-element set, a cross-Region flow a set naming both its Regions. Overrides are evaluated in order, first match wins.
 
 **`send-to` with a Region that has no local inspection VPC:**
 
@@ -203,7 +207,7 @@ Cross-Region traffic between `us-east-1` and `eu-west-1` is inspected in `us-eas
 
 Every Region named must already be a declared edge location — AWS Cloud WAN validates this at policy generation.
 
-> **Use `with-edge-overrides` for `send-to` and `single-hop`.** Without them, AWS Cloud WAN picks the inspection Region from a default priority list — opaque, not visible in the policy, and liable to change as Regions are added. `dual-hop` inspects in both Regions by definition and needs no overrides.
+> **Use `with-edge-overrides` for `send-to` and `single-hop`.** Without them, AWS Cloud WAN picks the inspection Region from a default priority list — opaque, not visible in the policy, and liable to change as Regions are added. `dual-hop` inspects in both Regions by definition; supplying `with-edge-overrides` with it is **rejected at validation**.
 
 With more than two Regions the overrides become a matrix (every source paired with every destination), which is worth drawing before writing JSON.
 
@@ -507,9 +511,16 @@ Give each action its own NFG instead — one for egress, one for east-west. That
 
 ### A segment cannot mix `dual-hop` and `single-hop`
 
-A segment can only use one `mode` for `send-via`, even across separate actions with different destinations. Your segment cannot be `dual-hop` toward one destination and `single-hop` toward another — pick the one mode it needs everywhere.
+Once a segment is used by a `send-via` action, it is locked to that action's `mode`. A later action that tries to use the same segment with the other mode is rejected at validation.
 
-The only workaround is to split by **source**, not destination: if some attachments in the segment only ever need one mode and others only ever need the other, move the second group into its own segment with its own `send-via` action. This does not help if the *same* attachment needs different modes depending on where it sends, since `mode` is a property of the source segment, not of the destination.
+This lock applies to **both ends** of an action — the source `segment` and whatever it sends to in `when-sent-to` (and `"*"` means every segment). So a destination segment gets locked too, even if it never has a `send-via` action of its own:
+
+- `send-via` on `production`, `when-sent-to: ["shared"]`, `mode: dual-hop` → locks both `production` and `shared` to dual-hop.
+- A later `send-via` on `development`, `when-sent-to: ["shared"]`, `mode: single-hop` → **rejected**, because `shared` is already locked to dual-hop.
+
+To use both modes, split the attachments that need each one into separate source segments, each with its own `send-via` action, and make sure no single destination segment is pulled into actions of both modes. What you cannot do is give the *same* attachment one mode toward one destination and the other mode toward another: the mode is fixed per segment, not chosen per flow.
+
+`send-to` resolves to one hop per Region, the same shape as `single-hop`, so it never clashes with a `single-hop` action on a shared segment. `dual-hop` is the only mode that is exclusive this way.
 
 ### Routing policies do not combine natively with service insertion
 

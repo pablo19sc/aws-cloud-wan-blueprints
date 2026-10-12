@@ -121,12 +121,12 @@ A pending attachment cannot reach the core network, and in a shared core network
 
 ### `deny-filter` and `allow-filter`
 
-Two guardrails on how routes exchange between segments, evaluated **after** every [`share`](./4-segment_sharing.md) action.
+Two guardrails on how routes exchange between segments, evaluated **after** every [`share`](./4-segment_sharing.md) action and every [`send-via`](./5-service_insertion.md) that opens reachability between two segments.
 
 Sharing is bidirectional — a share lets attachments in both segments reach each other — which is easy to reason about while a policy is small. Real ones grow long and may be edited by several people, so eventually a `share` lands where it should not and two segments that were never meant to talk can reach each other. These filters sit on the segment rather than in a share statement, so the boundary holds whatever gets added later.
 
-* **`deny-filter`**: segments this one will never exchange routes with. A share naming them does nothing.
-* **`allow-filter`**: the only segments this one may exchange routes with. A share naming anything else does nothing, and a listed segment still needs a share before routes flow.
+* **`deny-filter`**: segments this one will never exchange routes with. A `share` or `send-via` naming them does nothing.
+* **`allow-filter`**: the only segments this one may exchange routes with. A `share` or `send-via` naming anything else does nothing, and a listed segment still needs a `share` or `send-via` before routes flow.
 
 ```json
 {
@@ -161,9 +161,11 @@ The array is optional, and each entry takes three fields:
 |------|--------------|----------|---------|
 | `name` | The group's name, and the only way anything refers to it | Yes | — |
 | `description` | A free-text description | No | — |
-| `require-attachment-acceptance` | Whether a new attachment must be approved before it joins | No | No |
+| `require-attachment-acceptance` | Whether a new attachment must be approved before it joins | No | `true` |
 
 They behave much as they do on a segment, with only one difference. The `name` is referenced in two places, each covered on its own page: [`attachment-policies`](./3-attachment_policies.md), which work a bit different for network function group association, and the [`service insertion`](./5-service_insertion.md) directives that send traffic through it.
+
+An inspection VPC attachment waits for acceptance unless the group sets `require-attachment-acceptance` to `false`. Leaving it at the default is a common cause of "the firewall sees nothing" right after onboarding: the attachment is pending acceptance, not misrouted.
 
 > **Attaching an Inspection VPC is usually a one-time event**, far less dynamic than workload attachments joining and leaving. Even so, it is worth some extra care over the association: the attachment lands in the traffic path of every segment that sends to the group, so the routing it creates reaches well beyond itself.
 
