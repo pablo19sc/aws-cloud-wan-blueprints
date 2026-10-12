@@ -19,6 +19,9 @@
 - [ ] I have read [CONVENTIONS.md](../CONVENTIONS.md) and this change conforms to it.
 - [ ] `pre-commit run --all-files` passes locally (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 - [ ] I reviewed advisory Checkov findings, fixed applicable issues, and included a justification for every new suppression (baseline comment or inline `:reason`).
+- [ ] Any page or pattern added, removed, or renamed is reflected in [`llms.txt`](../llms.txt).
+- [ ] No file linked from outside this repository was renamed or moved (`llms.txt`, `policy/*.md`, `policy/README.md`, `guidance/README.md`, `infra/<pattern>/README.md`) — or, if one was, the pull request description calls it out.
+- [ ] If a convention or a validation step changed, [`AGENTS.md`](../AGENTS.md) reflects it.
 
 ## If the change is in `infra/`
 

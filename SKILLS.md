@@ -208,92 +208,17 @@ A repeatable design workflow:
 
 # How to use this repository
 
-AWS Cloud WAN Blueprints separates deployable infrastructure from policy capability, and
-understanding that split is most of what you need to navigate it. A third tree holds what
-the split cannot: scenario deep dives that compose several capabilities at once.
+The repository has three trees, decoupled on purpose: [`policy/`](./policy/) documents what a network policy can express, one page per area of the document; [`guidance/`](./guidance/) holds scenario deep dives that compose several capabilities; [`infra/`](./infra/) ships deployable patterns organised by the attachment types they create. Inspection does not care whether an attachment is a VPC or a VPN, so an `infra/` pattern does not represent a use case — it provides attachment types that **any** compatible policy can be pointed at.
 
-| Tree | Contains | Organised by |
-|------|----------|--------------|
-| [`infra/`](./infra/) | **Deployable infrastructure** | Which **attachment types** exist |
-| [`policy/`](./policy/) | **What a network policy can express** | The policy document's own top-level arrays |
-| [`guidance/`](./guidance/) | **Scenario deep dives** — design reasoning spanning several capabilities | The scenario, catalogued in [`guidance/README.md`](./guidance/README.md) |
+The consequence for you: **a use case is a policy, not a directory.** Do not look for a directory matching the user's requirement. Build the policy, then pick the pattern that has the attachment types it needs.
 
-They are decoupled on purpose. Inspection does not care whether an attachment is a VPC or
-a VPN; route filtering does not care whether a prefix came from a VPC or a Transit Gateway.
-So an `infra/` pattern does not represent a use case — it provides a set of attachment
-types that **any** compatible policy can be pointed at.
+Where to find what:
 
-The consequence for you: **a use case is a policy, not a directory.** Do not look for a
-directory matching the user's requirement. Build the policy, then pick the pattern that
-has the attachment types it needs.
-
-## `policy/` — the capability pages
-
-Each page maps to a part of the JSON, so once you know which array you need, you know which
-page to read:
-
-| Page | Produces |
-|------|----------|
-| [`1-core_network_version_configuration.md`](./policy/1-core_network_version_configuration.md) | `core-network-configuration` |
-| [`2-segments-and-nfg.md`](./policy/2-segments-and-nfg.md) | `segments` |
-| [`3-attachment_policies.md`](./policy/3-attachment_policies.md) | `attachment-policies` |
-| [`4-segment_sharing.md`](./policy/4-segment_sharing.md) | `segment-actions` (`share`) |
-| [`5-service_insertion.md`](./policy/5-service_insertion.md) | `network-function-groups`, `segment-actions` (`send-to`, `send-via`) |
-| [`6-static_routes.md`](./policy/6-static_routes.md) | `segment-actions` (`create-route`) |
-| [`7-routing_policies.md`](./policy/7-routing_policies.md) | `routing-policies` |
-| [`8-edge_location_associations.md`](./policy/8-edge_location_associations.md) | `segment-actions` (`associate-routing-policy`) |
-| [`9-attachment_routing_policy_rules.md`](./policy/9-attachment_routing_policy_rules.md) | `attachment-routing-policy-rules` |
-
-**Snippets, not full policies.** A *snippet* is a fragment — one array element or one
-array — illustrative and not deployable alone. Snippets live inline on the pages above and
-are the only JSON `policy/` contains: there is no library of ready-made policy documents,
-because a real requirement is not drawn from a fixed set, and a library never has the
-combination the next user needs. Composing snippets into a full document is this
-capability's job, not a file's — that is what the rest of this section walks through.
-
-## `guidance/` — the scenario deep dives
-
-Where a requirement's answer is a **known composition of several capabilities** — or needs
-knowledge the policy document does not contain, such as BGP path selection or Direct
-Connect behavior — the reasoning lives in a [`guidance/`](./guidance/) page rather than on
-any single capability page.
-
-**This file deliberately does not enumerate the guidance pages.** The index is the catalog
-table in [`guidance/README.md`](./guidance/README.md): match the request against its
-*Applies when* column, which is written as trigger phrases in the user's vocabulary. New
-pages appear in that catalog (and in [`llms.txt`](./llms.txt)) without this file changing,
-so the catalog is always more current than anything a copy here could be.
-
-Consult the catalog at three moments: when the user asks "how do I achieve X" and X spans
-capabilities, **before assembling a policy** (see [step 2](#2-assembly-order)), and when a
-troubleshooting symptom is scenario-shaped rather than construct-shaped. A matching page is
-source material exactly like a capability page — read it and let it drive the steps it
-touches. If nothing matches, proceed from the capability pages alone; the catalog is small
-by design and most requirements do not need it.
-
-## The attachment association contract
-
-This is the interface between [`policy/`](./policy/) and [`infra/`](./infra/). Patterns that create attachments use a common association contract where it fits, so a policy written from `policy/` can bind against any compatible pattern. Some patterns intentionally match by attachment type, and patterns that create no attachments only document the contract an added attachment must follow:
-
-| Tag | Applied to | Purpose |
-|-----|------------|---------|
-| `domain = <segment>` | VPC and Transit Gateway route-table attachments | Associate to the segment named by the value |
-| `inspection = true` | Inspection VPC attachments | Add to the inspection network function group |
-
-Hybrid attachments carry **no tag** — they are matched on `attachment-type`. That asymmetry
-is deliberate: use a tag when the destination is a *choice* the attachment owner makes; use
-the attachment type when the type *is* the intent.
-
-A policy whose `attachment-policies` do not match these tags produces attachments that
-reach `AVAILABLE` and never associate — the quietest failure in Cloud WAN.
-
-## Tooling
-
-| Tool | Does |
-|------|------|
-| `.github/scripts/check_policies.py` | CI and local pre-commit. Checks that each generated `core_network*.yaml` matches its suffix-paired `baseline*.json` and that every policy document is structurally valid. Not a tool for answering a user's question |
-
-Requires PyYAML (CI pins `6.0.2`) and does not contact AWS.
+- **Which page answers which question** — [`llms.txt`](./llms.txt) lists every page and pattern with the question it answers. The page for each array, in order, is the table in [step 2](#2-assembly-order).
+- **Snippets, not full policies** — the pages carry inline fragments of one array, never a complete document. Composing them into a full document is this skill's job, not a file's.
+- **Scenario deep dives** — this file deliberately does not enumerate them. Match the request against the *Applies when* column of the catalog in [`guidance/README.md`](./guidance/README.md) when the user asks "how do I achieve X" and X spans capabilities, **before assembling a policy**, and when a troubleshooting symptom is scenario-shaped. A matching page is source material like a capability page; if nothing matches, proceed from the capability pages alone.
+- **The attachment association contract** between policies and patterns — the tags each pattern applies, and why hybrid attachments match on type instead — is in [How attachments are associated](./infra/README.md#how-attachments-are-associated). A policy whose `attachment-policies` do not match it produces attachments that reach `AVAILABLE` and never associate.
+- **Editing, validating or contributing to this repository** — see [`AGENTS.md`](./AGENTS.md) and [`CONVENTIONS.md`](./CONVENTIONS.md).
 
 ## Things to tell the user, unprompted
 
@@ -309,25 +234,6 @@ Requires PyYAML (CI pins `6.0.2`) and does not contact AWS.
   or path preference took effect.
 - **The change-set dry run.** Creating a policy version validates it server-side and
   changes nothing until executed. For anything going near a real network, recommend it.
-
-## Conventions to respect when editing this repository
-
-- An `infra/` pattern is defined **only** by which attachment types it creates. It must not
-  encode a use case.
-- `baseline.json` is the normal source of truth for a pattern's initial policy. A documented
-  staged dependency may add suffix-paired `baseline_<stage>.json` and
-  `cloudformation/core_network_<stage>.yaml` documents. Terraform reads the JSON with
-  `file()`; CloudFormation embeds the matching document, and CI compares each pair.
-- `policy/` and `guidance/` contain inline, composable snippets only. If a correctly
-  composed policy reveals an undocumented interaction, update the relevant capability page
-  and the constraint checklist; if the interaction needs cross-capability teaching rather
-  than a checklist line, it belongs in a `guidance/` page — never a complete example policy.
-- A new `guidance/` page is indexed in `guidance/README.md` and `llms.txt`, **never
-  enumerated in this file** — this file routes to guidance through the catalog precisely so
-  it does not change when pages are added. The admission test is in
-  [`CONVENTIONS.md`](./CONVENTIONS.md).
-- [`CONVENTIONS.md`](./CONVENTIONS.md) is the authoritative contract for how the repository
-  is laid out and what a contribution must satisfy.
 
 ---
 
