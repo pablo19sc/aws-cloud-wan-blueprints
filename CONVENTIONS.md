@@ -75,6 +75,7 @@ guidance/                        # flat, one deep dive per cross-capability scen
 .github/scripts/                 # check_policies.py - CI pre-merge policy checks
 images/                          # architecture diagrams + editable sources
 llms.txt                         # annotated index of the repository, written for an AI agent
+AGENTS.md                        # guide for an AI agent working in a local clone
 ```
 
 Rules:
@@ -93,10 +94,12 @@ Rules:
 The repository exposes the same structure to human readers and AI agents. Keep those indexes synchronized in the same change:
 
 - When a pattern is added, removed, or renamed, update the catalogs in [`README.md`](README.md), [`infra/README.md`](infra/README.md), [Choosing infrastructure](SKILLS.md#5-choosing-infrastructure), and [`llms.txt`](llms.txt).
-- When a policy capability page is added, removed, or renamed, update [`README.md`](README.md), [`policy/README.md`](policy/README.md), the [`SKILLS.md`](SKILLS.md#policy--the-capability-pages) capability table, the [assembly order](SKILLS.md#2-assembly-order), [`llms.txt`](llms.txt), and any affected constraint-checklist entries.
+- When a policy capability page is added, removed, or renamed, update [`README.md`](README.md), [`policy/README.md`](policy/README.md), the [assembly order](SKILLS.md#2-assembly-order) in `SKILLS.md`, [`llms.txt`](llms.txt), and any affected constraint-checklist entries.
 - When a guidance page is added, removed, or renamed, update the catalog table in [`guidance/README.md`](guidance/README.md) and [`llms.txt`](llms.txt). **`SKILLS.md` is deliberately not on this list**: it routes to guidance through the catalog, not by enumerating pages, so adding a guidance page must never require a `SKILLS.md` edit. A change that would force one is a sign the page is enumerated somewhere it should not be.
 
-[`llms.txt`](llms.txt) is the agent-facing index: an annotated list of every `policy/` page and every `infra/` pattern, each line saying which question that resource answers. It is not a summary of the repository's content and must not become one — it is a routing table, and its only job is to stop an agent guessing at structure it can be told. It **must list every page and every pattern**, so a page or pattern that is not in it is a bug. Its links are relative, and there is deliberately no `llms-full.txt`.
+[`llms.txt`](llms.txt) is the agent-facing index: an annotated list of every `policy/` page and every `infra/` pattern, each line saying which question that resource answers. It is not a summary of the repository's content and must not become one — it is a routing table, and its only job is to stop an agent guessing at structure it can be told. It **must list every page and every pattern**, so a page or pattern that is not in it is a bug. Its links are relative, with one example raw-content URL near the top so an agent fetching it remotely can resolve them to plain markdown, and there is deliberately no `llms-full.txt`.
+
+[`AGENTS.md`](AGENTS.md) is the guide for an agent working in a local clone: where things are, the rules a change most often breaks, and which checks to run. It summarises and links to this file rather than restating it, so when a rule or check it names changes, update it in the same change.
 
 ### Documentation tiers
 

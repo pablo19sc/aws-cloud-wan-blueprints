@@ -8,6 +8,8 @@ Please read through this document before submitting any issues or pull requests 
 
 Every published pattern follows a single set of conventions covering naming, directory layout, dependency version pins, license headers, Cloud WAN network-policy authoring, and CloudFormation/Terraform parity. Before adding or modifying a pattern, a `policy/` capability page, or a `guidance/` scenario deep dive, read [CONVENTIONS.md](CONVENTIONS.md), it is the contract contributions must follow — including the admission test that decides whether a scenario qualifies for `guidance/` at all. Pull requests are expected to conform to it.
 
+If you contribute with an AI agent working in your local clone, point it at [AGENTS.md](AGENTS.md): it summarises the conventions a change most often breaks and which checks to run for what changed.
+
 ## Reporting bugs, feature requests, and generated-policy issues
 
 We welcome you to use the GitHub issue tracker to report bugs, suggest features, or report unexpected policy output from an AI agent using [`SKILLS.md`](SKILLS.md). When filing an issue, please check existing open or recently closed issues to make sure somebody else has not already reported it. Please include as much relevant information as you can. Details like these are especially useful:
